@@ -5,6 +5,7 @@ Save resources by skipping already done work!
 
 note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
+
 ![mapbrowser0](https://github.com/user-attachments/assets/55a1a07b-c0ae-45f1-bc40-0f2d03760ffb)
 
 ## Overview
@@ -12,7 +13,7 @@ note: this is an **Alpha** stage plugin, if you want to support development feel
 This package provides two ComfyUI nodes that simplify working with ControlNet maps by caching generated maps to disk and exposing a visual browser:
 
 - `CacheMapNode` — smart cache layer that checks a disk cache before requesting expensive preprocessors and can save generated maps for reuse.
-- `CacheMapBrowserNode` — sidebar/browser integration to preview and load cached maps (returns image + mask).
+- `CacheMapBrowserNode` — sidebar/browser integration to preview and load cached maps (returns the selected map).
 
   
 
@@ -21,9 +22,9 @@ These nodes are designed to reduce repeated preprocessing work and help organize
 ## Key Features
 
 - Cache lookup by filename and map type (supports multiple extensions).
-- `auto` mode detects existing map types and only runs connected preprocessors when needed.
-- `generate_all` option to batch-save all connected preprocessors and the original image.
-- Tagging: comma-separated `tags` input is persisted to a lightweight metadata DB for later retrieval and UI updates.
+- `auto` mode detects existing map types and only runs connected preprocessors when needed (returns the first connected, top to bottom)
+- `generate_all` option to batch-save all connected preprocessors and the original image tags them and saves all maps to cache folder
+- Tagging: comma-separated `tags` input is persisted to a lightweight metadata DB for later retrieval and UI updates. you can connect an llm to the source image and have comma separated list of tags of your choice
 - Browse and search the nodes by tag or type and easily select the image for reuse.
 
 ## Nodes
@@ -54,13 +55,14 @@ Default map types are configured in `eros_config.json`. The shipped defaults are
 depth, canny, openpose, lineart, scribble, softedge, normal, seg, shuffle, mediapipe_face, custom
 ```
 
-You can customize that list in `eros_config.json` (node will read this file on load).
+You can customize that list in `eros_config.json` (node will read this file on load). (this feature should work but not well tested)
+custom is a passthrough, you can pass whatever you want. original is always meatn to be there, as you need it for overlays. 
 
 ## Installation
 
 1. Clone this folder into your ComfyUI `custom_nodes` directory.
-2. Ensure the Python dependencies listed in `requirements.md` are installed (you should need sqlite3 and not much more, but need to refine the installation)
-3. Restart ComfyUI; the nodes appear under the `ErosDiffusion` category.
+2. Ensure the Python dependencies listed in `requirements.md` are installed (you should need sqlite3 and not much more, but need to refine the requirements.txt yet)
+3. Restart ComfyUI; the nodes appear under the `ErosDiffusion` category or in the templates.
 
 ## Typical Workflows (two workflows preset in the workflow examples folder)
 
