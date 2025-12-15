@@ -1,3 +1,9 @@
+"""
+Author: ErosDiffusion (EF)
+Email: erosdiffusionai+controlnetmaps@gmail.com
+Year: 2025
+"""
+
 import torch
 import os
 import json

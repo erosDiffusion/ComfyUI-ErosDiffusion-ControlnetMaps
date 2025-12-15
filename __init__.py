@@ -1,3 +1,9 @@
+"""
+Author: ErosDiffusion (EF)
+Email: erosdiffusionai+controlnetmaps@gmail.com
+Year: 2025
+"""
+
 from .cache_map_nodes import NODE_CLASS_MAPPINGS as CACHE_MAP_NODES
 from .cache_map_nodes import NODE_DISPLAY_NAME_MAPPINGS as CACHE_MAP_NAMES
 from .extract_metadata_node import NODE_CLASS_MAPPINGS as METADATA_NODES

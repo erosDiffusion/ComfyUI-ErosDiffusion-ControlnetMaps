@@ -1,3 +1,8 @@
+/**
+ * Author: ErosDiffusion (EF)
+ * Email: erosdiffusionai+controlnetmaps@gmail.com
+ * Year: 2025
+ */
 
 const STYLE_ID = "eros-cache-browser-style";
 export const DRAWER_CSS = `
@@ -398,10 +403,10 @@ export const DRAWER_CSS = `
 `;
 
 export function injectStyles() {
-    if (!document.getElementById(STYLE_ID)) {
-        const style = document.createElement("style");
-        style.id = STYLE_ID;
-        style.innerText = DRAWER_CSS;
-        document.head.appendChild(style);
-    }
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.innerText = DRAWER_CSS;
+    document.head.appendChild(style);
+  }
 }
