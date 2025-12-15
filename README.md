@@ -68,6 +68,9 @@ You can customize that list in `eros_config.json` (node will read this file on l
 - Batch export: Enable `generate_all` to save all connected preprocessor outputs and the original image to disk.
 - Browse & inject: Use the `CacheMapBrowserNode` to visually pick maps and feed them into downstream nodes.
 
+  <img width="1424" height="1125" alt="image" src="https://github.com/user-attachments/assets/774d7696-80ee-4136-b094-a540d82a7cab" />
+
+
 ## remarks
 
 - ctrl+click on existing tag adds to the current selected
