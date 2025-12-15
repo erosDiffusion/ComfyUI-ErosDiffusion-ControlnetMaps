@@ -1,8 +1,11 @@
-or
-
 # ErosDiffusion — ControlNet Map Cache & Browser
 
-Lightweight helper nodes for caching, browsing, and re-using ControlNet preprocess maps inside ComfyUI.
+Lightweight helper nodes for generating, tagging, caching, and searching and using ControlNet preprocess maps inside ComfyUI.
+Save resources by skipping already done work!
+
+note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
+
+![mapbrowser0](https://github.com/user-attachments/assets/55a1a07b-c0ae-45f1-bc40-0f2d03760ffb)
 
 ## Overview
 
@@ -10,6 +13,8 @@ This package provides two ComfyUI nodes that simplify working with ControlNet ma
 
 - `CacheMapNode` — smart cache layer that checks a disk cache before requesting expensive preprocessors and can save generated maps for reuse.
 - `CacheMapBrowserNode` — sidebar/browser integration to preview and load cached maps (returns image + mask).
+
+  
 
 These nodes are designed to reduce repeated preprocessing work and help organize map assets by filename and type.
 
@@ -19,7 +24,7 @@ These nodes are designed to reduce repeated preprocessing work and help organize
 - `auto` mode detects existing map types and only runs connected preprocessors when needed.
 - `generate_all` option to batch-save all connected preprocessors and the original image.
 - Tagging: comma-separated `tags` input is persisted to a lightweight metadata DB for later retrieval and UI updates.
-- Browser node returns both image and alpha mask (if present) for quick selection.
+- Browse and search the nodes by tag or type and easily select the image for reuse.
 
 ## Nodes
 
@@ -53,15 +58,24 @@ You can customize that list in `eros_config.json` (node will read this file on l
 
 ## Installation
 
-1. Copy this folder into your ComfyUI `custom_nodes` directory.
-2. Ensure the Python dependencies listed in `requirements.md` are installed.
+1. Clone this folder into your ComfyUI `custom_nodes` directory.
+2. Ensure the Python dependencies listed in `requirements.md` are installed (you should need sqlite3 and not much more, but need to refine the installation)
 3. Restart ComfyUI; the nodes appear under the `ErosDiffusion` category.
 
-## Typical Workflows
+## Typical Workflows (two workflows preset in the workflow examples folder)
 
 - Quick reuse: Connect a preprocessor node to `CacheMapNode`'s `source_<type>` and set `filename` to a stable identifier; future runs will load the cached map instead of re-running the preprocessor.
 - Batch export: Enable `generate_all` to save all connected preprocessor outputs and the original image to disk.
 - Browse & inject: Use the `CacheMapBrowserNode` to visually pick maps and feed them into downstream nodes.
+
+## remarks
+
+- ctrl+click on existing tag adds to the current selected
+- tags are not duplicated
+- comma separate tags in input and hit enter to insert or provide at generation time
+- filter using tags
+- type selection works but lable does not highlight
+- there are two implementations, vanilla and lit, lit is the target you can switch in the preferences (but vanilla might be broken now)
 
 ## Paths & Defaults
 
