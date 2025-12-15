@@ -1,0 +1,15 @@
+{
+    "map_types": [
+        "depth", 
+        "canny", 
+        "openpose", 
+        "lineart", 
+        "scribble", 
+        "softedge", 
+        "normal", 
+        "seg", 
+        "shuffle", 
+        "mediapipe_face", 
+        "custom"
+    ]
+}
