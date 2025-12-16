@@ -1,4 +1,4 @@
-# ErosDiffusion — ControlNet Map Cache & Browser
+# ErosDiffusion — ComfyUI ControlNet Map Cache & Browser
 
 Lightweight helper nodes for generating, tagging, caching, and searching and using ControlNet preprocess maps inside ComfyUI.
 Save resources by skipping already done work!
