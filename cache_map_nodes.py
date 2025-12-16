@@ -141,6 +141,8 @@ class CacheMapNode:
             return (img,)
 
         # Helper function to save tags
+        # If notify_on_complete is None we send frontend notifications immediately.
+        # If notify_on_complete is a set, we defer notifications and add basenames to it.
         def save_tags_for_image(filename_to_tag, tags_string):
             """Parse and save tags to database for the given filename."""
             print(f"[CacheMap] save_tags_for_image called with filename='{filename_to_tag}', tags='{tags_string}'")
@@ -191,26 +193,36 @@ class CacheMapNode:
                         print(f"[CacheMap] ✓ Successfully added tag '{tag}' to '{basename}'")
                     else:
                         print(f"[CacheMap] ⚠ Tag '{tag}' already exists for '{basename}' (skipped)")
-                
+
                 # Verify tags were saved
                 print(f"[CacheMap] Verifying saved tags for '{basename}'...")
                 saved_tags = metadata_manager.get_tags_for_image(basename)
                 print(f"[CacheMap] Tags in database for '{basename}': {saved_tags}")
-                
-                # Notify frontend that tags were updated
-                print(f"[CacheMap] Sending tag update notification to frontend for '{basename}'")
-                PromptServer.instance.send_sync("eros.tags.updated", {
-                    "basename": basename,
-                    "tags": saved_tags
-                })
+
+                # By default, notify frontend immediately. If defer is enabled
+                # the caller may add this basename to `notify_on_complete` set
+                # and notifications will be sent once processing finishes.
+                if notify_on_complete is None:
+                    print(f"[CacheMap] Sending tag update notification to frontend for '{basename}'")
+                    PromptServer.instance.send_sync("eros.tags.updated", {
+                        "basename": basename,
+                        "tags": saved_tags
+                    })
+                else:
+                    # Caller will handle notifying after batch operations
+                    notify_on_complete.add(basename)
             else:
                 print(f"[CacheMap] No valid tags to process after filtering")
 
 
         # Generate All Logic
+        # Set up a defer-notify set when doing batch generation so we can
+        # send frontend updates only after all maps are processed.
+        notify_on_complete = None
         if generate_all:
-             print(f"[CacheMap] Processing 'Generate All' for {filename}...")
-             for type_check in self._get_map_types():
+            notify_on_complete = set()
+            print(f"[CacheMap] Processing 'Generate All' for {filename}...")
+            for type_check in self._get_map_types():
                  if type_check == "custom":
                      continue
                  
@@ -220,7 +232,7 @@ class CacheMapNode:
                      target_dir, file_paths = self._get_cache_file_paths(cache_path, type_check, filename)
                      exists = self._check_exists(file_paths)
                      
-                     if force_generation or not exists:
+                                 if force_generation or not exists:
                          if not os.path.exists(target_dir):
                             os.makedirs(target_dir, exist_ok=True)
                          save_path = os.path.join(target_dir, os.path.splitext(os.path.basename(filename))[0] + ".png")
@@ -230,28 +242,28 @@ class CacheMapNode:
                          img = Image.fromarray(img_array)
                          img.save(save_path)
                          print(f"[CacheMap] Generate All: Saved {type_check} -> {save_path}")
-                         
-                         # Save tags when generating/regenerating
+
+                         # Save tags when generating/regenerating; defer frontend notify
                          save_tags_for_image(filename, tags_str)
                      else:
                          print(f"[CacheMap] Generate All: Skipped {type_check} (Exists)")
                          
              # Also handle source_original during Generate All
              orig_img = kwargs.get("source_original")
-             if orig_img is not None:
+                 if orig_img is not None:
                  target_dir = os.path.join(cache_path, "original")
                  if not os.path.exists(target_dir):
                      os.makedirs(target_dir, exist_ok=True)
                  
                  save_path = os.path.join(target_dir, os.path.splitext(os.path.basename(filename))[0] + ".png")
-                 if force_generation or not os.path.exists(save_path):
+                  if force_generation or not os.path.exists(save_path):
                       img_tensor = orig_img[0]
                       img_array = (img_tensor * 255.0).cpu().numpy().astype(np.uint8)
                       img = Image.fromarray(img_array)
                       img.save(save_path)
                       print(f"[CacheMap] Generate All: Saved original -> {save_path}")
-                      
-                      # Save tags for original image
+
+                      # Save tags for original image (defer notify)
                       save_tags_for_image(filename, tags_str)
 
         # Process Single Flow (saving source_original if present)
@@ -333,9 +345,20 @@ class CacheMapNode:
             img = Image.fromarray(img_array)
             img.save(save_path)
             print(f"[CacheMap] Saved {'(FORCED) ' if force_generation else ''}{target_type} map to {save_path}")
-            
+
             # Save tags when generating/regenerating
             save_tags_for_image(filename, tags_str)
+
+        # After all processing, if we deferred notifications for batch ops,
+        # send a single update per basename to the frontend so it only refreshes once.
+        if notify_on_complete:
+            for basename in list(notify_on_complete):
+                try:
+                    saved_tags = metadata_manager.get_tags_for_image(basename)
+                    print(f"[CacheMap] Sending batch tag update for '{basename}': {saved_tags}")
+                    PromptServer.instance.send_sync("eros.tags.updated", {"basename": basename, "tags": saved_tags})
+                except Exception as e:
+                    print(f"[CacheMap] Error sending batch tag update for '{basename}': {e}")
 
         return (generated_map,)
 
