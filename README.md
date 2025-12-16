@@ -1,6 +1,7 @@
 # ErosDiffusion — ComfyUI ControlNet Map Cache & Browser
 
-Handle your controlnet maps like a pro! Save resources by skipping already done work!
+**Handle your controlnet maps like a pro!**
+Save resources by skipping already done work!
 Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 
