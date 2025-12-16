@@ -418,7 +418,10 @@ class ErosLitSidebar extends LitElement {
   disconnectedCallback() {
     try {
       if (this._onBrowserOpen)
-        window.removeEventListener("eros.cache.browser.open", this._onBrowserOpen);
+        window.removeEventListener(
+          "eros.cache.browser.open",
+          this._onBrowserOpen
+        );
     } catch (e) {}
     super.disconnectedCallback();
   }
@@ -427,7 +430,11 @@ class ErosLitSidebar extends LitElement {
     const query = (this.tagSearchQuery || "").toLowerCase();
 
     // Prefer property-based linkage when available
-    const linkedName = this.selectedFilename || (this.activeNode && this.activeNode.widgets?.find((w)=>w.name==="filename")?.value) || null;
+    const linkedName =
+      this.selectedFilename ||
+      (this.activeNode &&
+        this.activeNode.widgets?.find((w) => w.name === "filename")?.value) ||
+      null;
 
     return html`
       <style>
@@ -440,7 +447,11 @@ class ErosLitSidebar extends LitElement {
             >
               Linked: ${linkedName}
             </div>`
-          : html`<div style="font-size:12px;color:#9ca2ad;padding:6px 0;border-bottom:1px solid #333;">No node linked — open a node and click "Open Browser" to link</div>`}
+          : html`<div
+              style="font-size:12px;color:#9ca2ad;padding:6px 0;border-bottom:1px solid #333;"
+            >
+              No node linked — open a node and click "Open Browser" to link
+            </div>`}
         <!-- Filter Section -->
         <div class="eros-tag-section">
           <div

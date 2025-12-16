@@ -45,8 +45,11 @@ import { app } from "../../scripts/app.js";
                   } catch (e) {}
                   window._eros_cache_browser = bEl;
                 }
-                if (bEl.parentNode !== containerEl) containerEl.appendChild(bEl);
-                console.log("[CacheMapBrowser] mounted eros-lit-browser (module init)");
+                if (bEl.parentNode !== containerEl)
+                  containerEl.appendChild(bEl);
+                console.log(
+                  "[CacheMapBrowser] mounted eros-lit-browser (module init)"
+                );
               } catch (err) {
                 console.warn(
                   "[CacheMapBrowser] lazy import/mount failed in render:",
@@ -92,7 +95,9 @@ app.registerExtension({
         // If a persistent sidebar instance was already registered and mounted,
         // reuse that instead of creating a new fallback instance.
         if (window._eros_cache_browser) {
-          console.log("[CacheMapBrowser] reusing registered window._eros_cache_browser");
+          console.log(
+            "[CacheMapBrowser] reusing registered window._eros_cache_browser"
+          );
           drawerInstance = window._eros_cache_browser;
           return drawerInstance;
         }
