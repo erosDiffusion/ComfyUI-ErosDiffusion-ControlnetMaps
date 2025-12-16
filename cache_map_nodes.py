@@ -21,6 +21,15 @@ DB_PATH = os.path.join(NODE_DIR, "metadata.db")
 
 metadata_manager = MetadataManager(DB_PATH)
 
+# Ensure default maps directory exists (first-run friendly)
+try:
+    default_maps_dir = os.path.join(folder_paths.get_input_directory(), "maps")
+    if not os.path.exists(default_maps_dir):
+        os.makedirs(default_maps_dir, exist_ok=True)
+        print(f"[CacheMap] Created default maps directory: {default_maps_dir}")
+except Exception as e:
+    print(f"[CacheMap] Warning: could not ensure default maps dir: {e}")
+
 def load_map_types():
     if os.path.exists(CONFIG_PATH):
         try:
@@ -441,8 +450,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 async def fetch_dirs(request):
     if "path" not in request.rel_url.query:
         return web.json_response({"error": "Missing path parameter"}, status=400)
-        
     target_path = request.rel_url.query["path"]
+    # Accept relative paths: resolve against Comfy input directory
+    if not os.path.isabs(target_path):
+        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
     if not os.path.exists(target_path):
          return web.json_response({"dirs": []})
     
@@ -455,6 +466,9 @@ async def fetch_files(request):
         return web.json_response({"error": "Missing path parameter"}, status=400)
     
     target_path = request.rel_url.query["path"]
+    # Accept relative paths: resolve against Comfy input directory
+    if not os.path.isabs(target_path):
+        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
     
     # Optional subfolder (e.g. map_type)
     subfolder = request.rel_url.query.get("subfolder", "")
@@ -484,6 +498,9 @@ async def view_image(request):
         return web.Response(status=400)
         
     target_path = request.rel_url.query["path"]
+    # Accept relative paths: resolve against Comfy input directory
+    if not os.path.isabs(target_path):
+        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
     filename = request.rel_url.query["filename"]
     subfolder = request.rel_url.query.get("subfolder", "")
     
