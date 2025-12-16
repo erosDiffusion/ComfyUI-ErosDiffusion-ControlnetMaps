@@ -5,6 +5,8 @@ Save resources by skipping already done work!
 
 note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
+https://github.com/user-attachments/assets/f7881a43-2fc4-41ca-9655-8090d4b42c64
+
 
 ![mapbrowser0](https://github.com/user-attachments/assets/55a1a07b-c0ae-45f1-bc40-0f2d03760ffb)
 
@@ -110,6 +112,10 @@ Provide a comma-separated `tags` string to `CacheMapNode` and tags will be parse
 
 PRs welcome. Keep changes focused and add tests/examples where possible. Test it and tell me what's wrong.
 during the vanilla to lit porting something got off, so there are some regressions.
+
+
+
+
 
 
 
