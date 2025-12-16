@@ -1,6 +1,5 @@
 __pycache__/
 *.py[cod]
 metadata.db
-metadata.db
 __pycache__/extract_metadata_node.cpython-312.pyc
 __pycache__/metadata_manager.cpython-312.pyc
