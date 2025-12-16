@@ -16,6 +16,11 @@ note: this is an **Alpha** stage plugin, if you want to support development feel
    1. `git clone https://github.com/erosDiffusion/ErosDiffusion-ControlnetMaps.git`  
 2. **Restart ComfyUI**: the nodes appear under the `ErosDiffusion` category or in the templates.
 3. Open Settings->Eros and **switch to "Lit" interface**
+4. add node to generate the maps (or use generatemaps workflow installing supporting nodes)
+5. drag and drop the map and make sure generate all is set to true (you can switch all flags on)
+6. then in your workflow ad the browser maps node, open the map browser with the button in the node, select a map that was generated, run your flow) the selected map will be used.
+7. you can filter and tag maps for easier finding.
+   
 
 **changelog 22.12.2025 - 17.22**
 
