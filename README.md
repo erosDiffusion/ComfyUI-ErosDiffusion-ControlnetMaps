@@ -7,6 +7,12 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
+**changelog 22.12.2025 - 17.22**
+
+- There was a tiny initialization issue that would prevent you from opening the map browser if the file reference would be empty. this would be a common scenario for a new installation, and it is now solved.
+please go to your extension directory, and in a terminal from the extension folder where you cloned do `git fetch` and `git pull` to get the newer version
+- the good news is a fresh install of comfy requires no dependency install so it should work out of the box, the necessary sqlite db are created on the fly when missing. 
+
 
 
 
