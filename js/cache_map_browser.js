@@ -24,18 +24,27 @@ app.registerExtension({
             if (sidebar) {
               // Try several possible sidebar registration method names for compatibility
               if (typeof sidebar.register === "function") {
-                sidebar.register("eros-cache-browser", {
+                const id = sidebar.register("eros-cache-browser", {
                   title: "Cache Browser",
                   element: el,
                 });
+                el._sidebarMethod = "register";
+                el._sidebarId = id || "eros-cache-browser";
+                el._sidebar = sidebar;
                 drawerInstance = el;
                 return el;
               } else if (typeof sidebar.addTab === "function") {
-                sidebar.addTab("eros-cache-browser", el, { title: "Cache Browser" });
+                const id = sidebar.addTab("eros-cache-browser", el, { title: "Cache Browser" });
+                el._sidebarMethod = "addTab";
+                el._sidebarId = id || "eros-cache-browser";
+                el._sidebar = sidebar;
                 drawerInstance = el;
                 return el;
               } else if (typeof sidebar.addPanel === "function") {
-                sidebar.addPanel("Cache Browser", el);
+                const id = sidebar.addPanel("Cache Browser", el);
+                el._sidebarMethod = "addPanel";
+                el._sidebarId = id || "eros-cache-browser";
+                el._sidebar = sidebar;
                 drawerInstance = el;
                 return el;
               }
@@ -62,7 +71,36 @@ app.registerExtension({
 
         this.addWidget("button", "Open Browser", "open", async () => {
           if (!this.drawer) this.drawer = await getDrawer();
-          if (this.drawer) this.drawer.open(this);
+          if (!this.drawer) return;
+
+          // If the component was registered with the sidebar, try to open/show it via sidebar APIs
+          const sidebar = this.drawer._sidebar || app?.ui?.sidebar;
+          if (sidebar) {
+            try {
+              const id = this.drawer._sidebarId || "eros-cache-browser";
+              if (typeof sidebar.openTab === "function") {
+                sidebar.openTab(id);
+                return;
+              } else if (typeof sidebar.open === "function") {
+                sidebar.open(id);
+                return;
+              } else if (typeof sidebar.showTab === "function") {
+                sidebar.showTab(id);
+                return;
+              } else if (typeof sidebar.activateTab === "function") {
+                sidebar.activateTab(id);
+                return;
+              } else if (typeof sidebar.show === "function") {
+                sidebar.show(id);
+                return;
+              }
+            } catch (e) {
+              console.warn("Sidebar open API failed, falling back to component.open:", e);
+            }
+          }
+
+          // Fallback: call the component's open method
+          if (typeof this.drawer.open === "function") this.drawer.open(this);
         });
 
         this.addWidget("button", "Run", "run", () => {
