@@ -90,7 +90,15 @@ export const DRAWER_CSS = `
     flex-direction: column;
     gap: 15px;
     background: rgba(0, 0, 0, 0.2);
-    overflow-y: auto;
+    height: -webkit-fill-available;
+    overflow: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
+  }
+  .eros-tag-sidebar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .eros-controls {
