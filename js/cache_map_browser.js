@@ -228,6 +228,49 @@ app.registerExtension({
           app.queuePrompt(0, 1);
         });
 
+        // Register a filtered global listener so this node only responds
+        // to selections when it is the browser's active node.
+        try {
+          const handler = (ev) => {
+            const d = ev.detail || {};
+            const filename = d.filename || null;
+            if (!filename) return;
+            try {
+              const browser = window._eros_cache_browser;
+              if (!browser || browser.activeNode !== this) return;
+            } catch (e) {
+              return;
+            }
+            const w = this.widgets?.find((w) => w.name === "filename");
+            if (w) {
+              const browser = window._eros_cache_browser;
+              // If filename already includes a subfolder prefix, use it
+              if (filename.includes("/")) {
+                w.value = filename;
+              } else {
+                w.value = `${
+                  (browser && browser.currentTab) || ""
+                }/${filename}`;
+              }
+              w.callback?.(w.value);
+              if (d.imgPath) {
+                try {
+                  this.imgs = [new Image()];
+                  this.imgs[0].src = d.imgPath;
+                  app.graph.setDirtyCanvas(true);
+                } catch (e) {}
+              }
+            }
+          };
+          if (this._eros_cache_handler)
+            window.removeEventListener(
+              "eros.cache.image.selected",
+              this._eros_cache_handler
+            );
+          this._eros_cache_handler = handler;
+          window.addEventListener("eros.cache.image.selected", handler);
+        } catch (e) {}
+
         return r;
       };
 

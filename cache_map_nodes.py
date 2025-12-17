@@ -403,15 +403,33 @@ class CacheMapBrowserNode:
             print(f"[CacheMapBrowser] load_image called with empty filename (cache_path={cache_path})")
             return (torch.zeros((1, 512, 512, 3)), torch.zeros((1, 512, 512)))
 
-        # Check cache_path first
-        p1 = os.path.join(cache_path, filename)
-        # Ensure we don't treat directories as files
+        # Resolve base cache directory: use provided cache_path or default maps dir
+        base_cache = cache_path or default_maps_dir
+        # If relative, resolve against Comfy input directory
+        if not os.path.isabs(base_cache):
+            base_cache = os.path.join(folder_paths.get_input_directory(), base_cache)
+
+        # Try direct join (handles prefixed 'type/filename' entries)
+        p1 = os.path.join(base_cache, filename)
         if os.path.exists(p1) and os.path.isfile(p1):
             image_path = p1
+        # Try extra_path if provided
         elif extra_path:
-             p2 = os.path.join(extra_path, filename)
-             if os.path.exists(p2) and os.path.isfile(p2):
-                 image_path = p2
+            ep = extra_path or ""
+            if not os.path.isabs(ep):
+                ep = os.path.join(folder_paths.get_input_directory(), ep)
+            p2 = os.path.join(ep, filename)
+            if os.path.exists(p2) and os.path.isfile(p2):
+                image_path = p2
+        else:
+            # As a fallback, if filename contains a prefix like 'type/name', also try splitting
+            if "/" in filename:
+                parts = filename.split("/")
+                sub = parts[0]
+                name_only = "/".join(parts[1:])
+                alt = os.path.join(base_cache, sub, name_only)
+                if os.path.exists(alt) and os.path.isfile(alt):
+                    image_path = alt
         
         if image_path is None:
             #  print(f"[CacheMapBrowser] File not found: {filename}")
@@ -448,12 +466,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 
 @PromptServer.instance.routes.get("/eros/cache/fetch_dirs")
 async def fetch_dirs(request):
-    if "path" not in request.rel_url.query:
-        return web.json_response({"error": "Missing path parameter"}, status=400)
-    target_path = request.rel_url.query["path"]
-    # Accept relative paths: resolve against Comfy input directory
-    if not os.path.isabs(target_path):
-        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
+    # Use default maps dir when no path provided or path is empty
+    target_path = request.rel_url.query.get("path", "")
+    if not target_path:
+        target_path = default_maps_dir
+    else:
+        # Accept relative paths: resolve against Comfy input directory
+        if not os.path.isabs(target_path):
+            target_path = os.path.join(folder_paths.get_input_directory(), target_path)
     if not os.path.exists(target_path):
          return web.json_response({"dirs": []})
     
@@ -462,19 +482,22 @@ async def fetch_dirs(request):
 
 @PromptServer.instance.routes.get("/eros/cache/fetch_files")
 async def fetch_files(request):
-    if "path" not in request.rel_url.query:
-        return web.json_response({"error": "Missing path parameter"}, status=400)
-    
-    target_path = request.rel_url.query["path"]
-    # Accept relative paths: resolve against Comfy input directory
-    if not os.path.isabs(target_path):
-        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
-    
+    # Use default maps dir when no path provided or path is empty
+    target_path = request.rel_url.query.get("path", "")
+    if not target_path:
+        target_path = default_maps_dir
+    else:
+        if not os.path.isabs(target_path):
+            target_path = os.path.join(folder_paths.get_input_directory(), target_path)
+
     # Optional subfolder (e.g. map_type)
     subfolder = request.rel_url.query.get("subfolder", "")
-    
-    search_path = os.path.join(target_path, subfolder)
-    
+    # Sanitize accidental object stringification from client-side
+    if isinstance(subfolder, str) and "[object Object]" in subfolder:
+        subfolder = ""
+
+    search_path = os.path.join(target_path, subfolder) if subfolder else target_path
+
     if not os.path.exists(search_path):
          return web.json_response({"files": []})
 
@@ -494,21 +517,27 @@ async def fetch_files(request):
 
 @PromptServer.instance.routes.get("/eros/cache/view_image")
 async def view_image(request):
-    if "path" not in request.rel_url.query or "filename" not in request.rel_url.query:
+    filename = request.rel_url.query.get("filename")
+    if not filename:
         return web.Response(status=400)
-        
-    target_path = request.rel_url.query["path"]
-    # Accept relative paths: resolve against Comfy input directory
-    if not os.path.isabs(target_path):
-        target_path = os.path.join(folder_paths.get_input_directory(), target_path)
-    filename = request.rel_url.query["filename"]
+
+    target_path = request.rel_url.query.get("path", "")
+    if not target_path:
+        target_path = default_maps_dir
+    else:
+        if not os.path.isabs(target_path):
+            target_path = os.path.join(folder_paths.get_input_directory(), target_path)
+
     subfolder = request.rel_url.query.get("subfolder", "")
-    
-    full_path = os.path.join(target_path, subfolder, filename)
-    
+    # sanitize
+    if isinstance(subfolder, str) and "[object Object]" in subfolder:
+        subfolder = ""
+
+    full_path = os.path.join(target_path, subfolder, filename) if subfolder else os.path.join(target_path, filename)
+
     if not os.path.exists(full_path):
         return web.Response(status=404)
-        
+
     return web.FileResponse(full_path)
 
 # ================= Favorites API =================
@@ -629,5 +658,93 @@ async def delete_tag(request):
         
         success = metadata_manager.delete_tag(name)
         return web.json_response({"success": success, "name": name})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.post("/eros/cache/delete_map")
+async def delete_map(request):
+    """Delete a cached map file. JSON body expects:
+       { "cache_path": <optional>, "subfolder": <optional>, "filename": <required>, "basename": <optional>, "delete_all": <bool> }
+
+    If `delete_all` is true, all files matching the basename across subfolders
+    under the cache path will be removed. Otherwise only the provided
+    `subfolder/filename` (or filename relative to cache_path) is removed.
+    After deletion, any tag associations for the basename will be removed
+    from the metadata DB (tags themselves are preserved).
+    """
+    try:
+        data = await request.json()
+        cache_path = data.get("cache_path", "")
+        subfolder = data.get("subfolder", "")
+        filename = data.get("filename")
+        basename = data.get("basename")
+        delete_all = bool(data.get("delete_all", False))
+
+        if not filename and not basename:
+            return web.json_response({"error": "Missing filename or basename"}, status=400)
+
+        # Resolve base cache path
+        if not cache_path:
+            target_path = default_maps_dir
+        else:
+            target_path = cache_path
+            if not os.path.isabs(target_path):
+                target_path = os.path.join(folder_paths.get_input_directory(), target_path)
+
+        deleted = []
+
+        # Determine basename if missing
+        if not basename and filename:
+            basename = os.path.splitext(os.path.basename(filename))[0]
+
+        # If delete_all, scan subdirectories
+        if delete_all:
+            if not os.path.exists(target_path):
+                return web.json_response({"deleted": deleted})
+            for root, dirs, files in os.walk(target_path):
+                for f in list(files):
+                    if os.path.splitext(f)[0] == basename:
+                        p = os.path.join(root, f)
+                        try:
+                            os.remove(p)
+                            deleted.append(os.path.relpath(p, start=target_path))
+                        except Exception:
+                            pass
+        else:
+            # Delete the specific file path
+            # Accept either a subfolder+filename or filename that may already include subfolder
+            if subfolder and filename:
+                full = os.path.join(target_path, subfolder, filename)
+            elif filename and "/" in filename:
+                full = os.path.join(target_path, filename)
+            elif filename:
+                # try currentTab-like resolution: search for file in subfolders
+                full = os.path.join(target_path, filename)
+
+            if os.path.exists(full) and os.path.isfile(full):
+                try:
+                    os.remove(full)
+                    deleted.append(os.path.relpath(full, start=target_path))
+                except Exception:
+                    pass
+
+        # Remove tag associations for this basename
+        removed_count = 0
+        if basename:
+            try:
+                removed_count = metadata_manager.remove_tags_for_image(basename)
+            except Exception:
+                removed_count = 0
+
+        # Notify frontend(s)
+        try:
+            PromptServer.instance.send_sync("eros.image.deleted", {"basename": basename, "deleted": deleted})
+            # Also send an empty tags update so clients know tags for this basename are gone
+            PromptServer.instance.send_sync("eros.tags.updated", {"basename": basename, "tags": []})
+        except Exception:
+            pass
+
+        return web.json_response({"success": True, "deleted": deleted, "removed_tag_links": removed_count})
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)

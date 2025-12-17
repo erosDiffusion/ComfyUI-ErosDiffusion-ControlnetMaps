@@ -296,3 +296,22 @@ class MetadataManager:
         except Exception as e:
             print(f"[MetadataManager] Error deleting tag: {e}")
             return False
+
+    def remove_tags_for_image(self, image_path):
+        """Remove all tag associations for the given image_path (basename key).
+
+        This does NOT delete the tag definitions themselves, only removes the
+        junction rows linking tags to the image.
+        Returns the number of removed rows.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(1) FROM image_tags WHERE image_path = ?", (image_path,))
+                before = cursor.fetchone()[0]
+                cursor.execute("DELETE FROM image_tags WHERE image_path = ?", (image_path,))
+                conn.commit()
+                return before
+        except Exception as e:
+            print(f"[MetadataManager] Error removing tags for image: {e}")
+            return 0

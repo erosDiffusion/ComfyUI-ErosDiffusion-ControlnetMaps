@@ -264,11 +264,16 @@ class ErosLitGrid extends LitElement {
   }
 
   renderItem(f, c) {
-    const base = f
-      .split("/")
-      .pop()
-      .replace(/\.[^/.]+$/, "");
-    const ts = c.cacheBusting ? `&t=${Date.now()}` : ""; // Lit handles re-render intelligently
+    // Support filenames that may be prefixed with a subfolder: 'type/file'
+    let sub = this.currentTab;
+    let filename = f;
+    if (f && f.includes("/")) {
+      const parts = f.split("/");
+      sub = parts[0];
+      filename = parts.slice(1).join("/");
+    }
+    const base = filename.replace(/\.[^/.]+$/, "");
+    const ts = c.cacheBusting ? `&t=${Date.now()}` : "";
     // Note: Using Date.now() in render() forces reload on every update?
     // Better to store timestamp in state if we want to control it, implies simple cache busting might cause reloads.
     // For now adhering to logic: if c.cacheBusting is true, we might generate new URL?
@@ -277,7 +282,9 @@ class ErosLitGrid extends LitElement {
 
     const imgPath = `/eros/cache/view_image?path=${encodeURIComponent(
       this.cachePath
-    )}&subfolder=${this.currentTab}&filename=${encodeURIComponent(f)}${ts}`;
+    )}&subfolder=${encodeURIComponent(sub)}&filename=${encodeURIComponent(
+      filename
+    )}${ts}`;
     const tags = this.imageTags.get(base);
 
     return html`
@@ -305,7 +312,7 @@ class ErosLitGrid extends LitElement {
                 class="eros-overlay"
                 src="/eros/cache/view_image?path=${encodeURIComponent(
                   this.cachePath
-                )}&subfolder=original&filename=${encodeURIComponent(f)}${ts}"
+                )}&subfolder=original&filename=${encodeURIComponent(filename)}${ts}"
                 style="opacity:${c.opacity}; mix-blend-mode:${c.blendMode}; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"
                 @error=${(e) => (e.target.style.display = "none")}
               />
@@ -344,9 +351,17 @@ class ErosLitGrid extends LitElement {
         composed: true,
       })
     );
-    // Do not emit a global event; let the parent `ErosLitBrowser` handle
-    // selection and update the active node directly. This prevents
-    // multiple nodes from being updated when an image is selected.
+    // Emit a global event so listeners can react, but receivers should
+    // filter events to only update when appropriate (linked to active node).
+    try {
+      window.dispatchEvent(
+        new CustomEvent("eros.cache.image.selected", {
+          detail: { filename: f, imgPath: path },
+        })
+      );
+    } catch (e) {
+      /* ignore */
+    }
     // Local selection highlight?
     // const items = this.shadowRoot.querySelectorAll('.eros-item');
     // items.forEach(i => i.classList.remove('selected'));
@@ -394,6 +409,7 @@ class ErosLitSidebar extends LitElement {
     this.collapsed = { filter: false, selected: false };
     this._activeNode = null;
     this._activeFilename = null;
+    this._deleteAllFlag = false;
   }
 
   connectedCallback() {
@@ -409,10 +425,6 @@ class ErosLitSidebar extends LitElement {
       } catch (e) {}
     };
     window.addEventListener("eros.cache.browser.open", this._onBrowserOpen);
-    // Fetch files so the sidebar shows content even when opened manually
-    try {
-      this.fetchFiles(false);
-    } catch (e) {}
   }
 
   disconnectedCallback() {
@@ -590,6 +602,19 @@ class ErosLitSidebar extends LitElement {
                       🤖
                     </button>
                   </div>
+                  <div style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
+                    <label style="font-size:12px; display:flex; align-items:center; gap:8px;">
+                      <input type="checkbox" id="del-all"
+                        @click=${(e) => { e.stopPropagation(); this._deleteAllFlag = e.target.checked; }}
+                      />
+                      Delete all maps for original
+                    </label>
+                    <div>
+                      <button class="eros-btn" style="background:#8b2a2a; color:white;" @click=${(e)=>{ e.stopPropagation(); this._onDelete(); }}>
+                        Delete Map
+                      </button>
+                    </div>
+                  </div>
                 `}
           </div>
         </div>
@@ -607,6 +632,15 @@ class ErosLitSidebar extends LitElement {
       })
     );
     if (input) input.value = "";
+  }
+
+  _onDelete() {
+    // Dispatch an event upward so the orchestrator can perform deletion
+    this.dispatchEvent(new CustomEvent("image-delete", {
+      detail: { all: !!this._deleteAllFlag },
+      bubbles: true,
+      composed: true
+    }));
   }
 }
 customElements.define("eros-lit-sidebar", ErosLitSidebar);
@@ -664,7 +698,8 @@ export class ErosLitBrowser extends LitElement {
       if (
         evt === "tag-added" ||
         evt === "tag-removed" ||
-        evt === "tags-loaded"
+        evt === "tags-loaded" ||
+        evt === "map-deleted"
       ) {
         this.requestUpdate();
       }
@@ -690,6 +725,11 @@ export class ErosLitBrowser extends LitElement {
       this._sidebarMethod
     );
     this.cache.loadTags();
+    // Default to 'original' when opened manually (no linked node)
+    if (!this.currentTab) this.currentTab = "original";
+    try {
+      this.fetchFiles(false);
+    } catch (e) {}
   }
 
   // API
@@ -747,7 +787,12 @@ export class ErosLitBrowser extends LitElement {
     const w = this.activeNode.widgets?.find((w) => w.name === "filename");
     if (w) {
       console.log("[Lit] Node Update Triggered:", filename);
-      w.value = `${this.currentTab}/${filename}`;
+      // If filename already includes a subfolder prefix, use it as-is.
+      if (filename && filename.includes("/")) {
+        w.value = filename;
+      } else {
+        w.value = `${this.currentTab}/${filename}`;
+      }
       w.callback?.(w.value);
 
       // Image Preview (Canvas)
@@ -771,23 +816,79 @@ export class ErosLitBrowser extends LitElement {
     }
   }
 
-  async fetchFiles(updateNode = false) {
-    const f = await this.cache.fetchFiles(this.currentTab);
-    this.files = f;
+  async fetchFiles(updateNode = false, forceAll = false) {
+    // If no cache path is configured (manual sidebar open), fetch across
+    // all known map types so the user sees all maps. Otherwise fetch for
+    // the currentTab only.
+    const MAP_TYPES = [
+      "depth",
+      "canny",
+      "openpose",
+      "lineart",
+      "scribble",
+      "softedge",
+      "normal",
+      "seg",
+      "shuffle",
+      "mediapipe_face",
+      "custom",
+    ];
+
+    let combined = [];
+    try {
+      if (!this.cache.cachePath && !forceAll) {
+        // If no cachePath and user selected a specific tab, fetch that tab
+        if (this.currentTab) {
+          const f = await this.cache.fetchFiles(this.currentTab);
+          combined = f.map((p) => `${this.currentTab}/${p}`);
+        } else {
+          // No tab selected: fetch all types
+          for (const t of MAP_TYPES) {
+            try {
+              const parts = await this.cache.fetchFiles(t);
+              if (parts && parts.length)
+                combined.push(...parts.map((p) => `${t}/${p}`));
+            } catch (e) {
+              /* ignore per-type failures */
+            }
+          }
+        }
+      } else if (!this.cache.cachePath && forceAll) {
+        for (const t of MAP_TYPES) {
+          try {
+            const parts = await this.cache.fetchFiles(t);
+            if (parts && parts.length)
+              combined.push(...parts.map((p) => `${t}/${p}`));
+          } catch (e) {
+            /* ignore per-type failures */
+          }
+        }
+      } else {
+        const f = await this.cache.fetchFiles(this.currentTab);
+        combined = f.map((p) => `${this.currentTab}/${p}`);
+      }
+    } catch (e) {
+      combined = [];
+    }
+
+    this.files = combined;
 
     // Restore selection logic
     if (this.selectedFilename) {
       const base = this.cache.getBasename(this.selectedFilename);
-      const match = f.find((file) => this.cache.getBasename(file) === base);
+      const match = this.files.find(
+        (file) => this.cache.getBasename(file) === base
+      );
       if (match) {
         this.selectedFilename = match;
-        // If we switched tabs and found a match, update the node
         if (updateNode) this._updateNode(match);
       } else this.selectedFilename = null;
     }
 
-    f.forEach((file) => {
-      const base = this.cache.getBasename(file);
+    // Load tags for each file entry (strip any prefixed subfolder)
+    this.files.forEach((file) => {
+      const name = file && file.includes("/") ? file.split("/").slice(1).join("/") : file;
+      const base = this.cache.getBasename(name);
       if (!this.cache.imageTags.has(base)) this.cache.loadImageTags(base);
     });
   }
@@ -916,7 +1017,7 @@ export class ErosLitBrowser extends LitElement {
               .config=${this.settings}
               @setting-change=${this._handleSetting}
               @tab-changed=${this._handleTab}
-              @refresh-requested=${this.fetchFiles}
+              @refresh-requested=${() => this.fetchFiles(false)}
             ></eros-lit-controls>
 
             <eros-lit-grid
@@ -927,8 +1028,10 @@ export class ErosLitBrowser extends LitElement {
               .config=${this.settings}
               .selectedFilename=${this.selectedFilename}
               @image-selected=${(e) => {
-                this.selectedFilename = e.detail.filename;
-                this._updateNode(e.detail.filename, e.detail.imgPath);
+                // Filename may be prefixed with subfolder (type/file.png)
+                const fn = e.detail.filename;
+                this.selectedFilename = fn;
+                this._updateNode(fn, e.detail.imgPath);
               }}
             ></eros-lit-grid>
           </div>
@@ -973,6 +1076,7 @@ export class ErosLitBrowser extends LitElement {
               )}
             @tag-auto=${() =>
               this.cache.autoTag(this.cache.getBasename(this.selectedFilename))}
+            @image-delete=${(e) => this._handleImageDelete(e.detail && e.detail.all)}
           ></eros-lit-sidebar>
         </div>
       </div>
@@ -991,14 +1095,66 @@ export class ErosLitBrowser extends LitElement {
     this.saveSettings();
   }
   _handleTab(e) {
-    const tab = e.detail;
+    const tab = e?.detail?.tab || e?.detail || e;
     this.currentTab = tab;
     this.settings = { ...this.settings, currentTab: tab };
-    // Refresh file list for the newly selected tab
+    // If a node is linked, fetch and update the node selection if a matching
+    // map exists in the newly selected tab. Otherwise just refresh the list.
     try {
-      this.fetchFiles(tab);
+      const updateNode = !!this.activeNode;
+      this.fetchFiles(updateNode);
     } catch (ex) {
       // ignore
+    }
+  }
+
+  async _handleImageDelete(allFlag) {
+    const basename = this.cache.getBasename(this.selectedFilename || "");
+    if (!basename) return;
+
+    // Confirm with user (basic confirm dialog)
+    try {
+      const ok = confirm(
+        allFlag
+          ? `Delete ALL maps for '${basename}' and remove its tags?`
+          : `Delete map '${this.selectedFilename}' and remove its tags?`
+      );
+      if (!ok) return;
+    } catch (e) {}
+
+    const res = await this.cache.deleteMap(basename, this.currentTab, this.cache.cachePath, !!allFlag);
+    if (res && res.success) {
+      // Clear selection and refresh
+      this.selectedFilename = null;
+      // If an active node references this basename, clear its filename
+      try {
+        const node = this.activeNode;
+        if (node) {
+          const w = node.widgets?.find((w) => w.name === "filename");
+          if (w) {
+            const val = w.value || "";
+            const valBasename = this.cache.getBasename(val);
+            if (valBasename === basename) {
+              w.value = "";
+              w.callback?.(w.value);
+              // clear preview
+              node.imgs = [];
+              app.graph.setDirtyCanvas(true);
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Reload files and tags
+      try {
+        await this.fetchFiles(false, true);
+        this.cache.loadTags();
+      } catch (e) {}
+    } else {
+      console.error("Delete failed", res);
+      try {
+        alert("Delete failed: " + (res && (res.error || res.message)));
+      } catch (e) {}
     }
   }
 
@@ -1031,7 +1187,7 @@ export class ErosLitBrowser extends LitElement {
             this.currentTab = tab;
             this.settings = { ...this.settings, currentTab: tab };
           }
-          this.selectedFilename = parts[1];
+          this.selectedFilename = `${tab}/${parts.slice(1).join("/")}`;
         } else {
           this.selectedFilename = wVal;
         }
@@ -1052,7 +1208,10 @@ export class ErosLitBrowser extends LitElement {
     // Ensure active node is set first so header and state update
     if (node) this.setActiveNode(node);
     this.isOpen = true;
-    this.fetchFiles(false);
+    // If opening for a node, try to select matching file and update node
+    try {
+      this.fetchFiles(!!node);
+    } catch (e) {}
   }
 }
 

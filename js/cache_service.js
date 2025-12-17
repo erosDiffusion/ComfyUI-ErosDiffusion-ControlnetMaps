@@ -127,4 +127,31 @@ export class CacheService {
       return null;
     }
   }
+
+  async deleteMap(basename, subfolder, cachePath, deleteAll = false) {
+    if (!basename) return { success: false, error: "Missing basename" };
+    try {
+      const body = { basename: basename, delete_all: !!deleteAll };
+      if (subfolder) body.subfolder = subfolder;
+      if (cachePath) body.cache_path = cachePath;
+
+      const resp = await api.fetchApi("/eros/cache/delete_map", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+
+      // Update local caches optimistically
+      if (data && data.success) {
+        this.imageTags.delete(basename);
+        // notify listeners so UI can refresh
+        this.notify("map-deleted", { basename, deleted: data.deleted || [] });
+      }
+
+      return data;
+    } catch (e) {
+      console.error("Delete Map Failed:", e);
+      return { success: false, error: String(e) };
+    }
+  }
 }
