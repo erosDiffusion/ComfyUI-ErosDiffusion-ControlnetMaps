@@ -1,1326 +1,241 @@
 {
-  "id": "089509bf-1a02-4d70-8226-71f019f4b823",
-  "revision": 0,
-  "last_node_id": 23,
-  "last_link_id": 61,
-  "nodes": [
-    {
-      "id": 8,
-      "type": "MediaPipe-FaceMeshPreprocessor",
-      "pos": [
-        700,
-        1754
-      ],
-      "size": [
-        270,
-        106
-      ],
-      "flags": {},
-      "order": 12,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 8
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            40
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "MediaPipe-FaceMeshPreprocessor"
-      },
-      "widgets_values": [
-        10,
-        0.5,
-        512
-      ]
+  "10": {
+    "inputs": {
+      "image": "funko-pops-movie-ast-9d565a50-ef99-40aa-bb2b-cb21db7bbe43-jpgrendition.jpg"
     },
-    {
-      "id": 9,
-      "type": "Canny",
-      "pos": [
-        700,
-        1990
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {},
-      "order": 13,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 9
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": []
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.4.0",
-        "Node name for S&R": "Canny"
-      },
-      "widgets_values": [
-        0.4,
-        0.8
-      ]
-    },
-    {
-      "id": 14,
-      "type": "PreviewImage",
-      "pos": [
-        1608.3322265625002,
-        130
-      ],
-      "size": [
-        140,
-        246
-      ],
-      "flags": {},
-      "order": 18,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 45
-        }
-      ],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.4.0",
-        "Node name for S&R": "PreviewImage"
-      },
-      "widgets_values": []
-    },
-    {
-      "id": 2,
-      "type": "AnyLineArtPreprocessor_aux",
-      "pos": [
-        700,
-        434
-      ],
-      "size": [
-        280.115234375,
-        178
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 2
-        }
-      ],
-      "outputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            34,
-            50
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "AnyLineArtPreprocessor_aux"
-      },
-      "widgets_values": [
-        "lineart_standard",
-        1280,
-        0,
-        1,
-        36,
-        1
-      ]
-    },
-    {
-      "id": 4,
-      "type": "HEDPreprocessor",
-      "pos": [
-        700,
-        954
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {},
-      "order": 8,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 4
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            51
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "HEDPreprocessor"
-      },
-      "widgets_values": [
-        "enable",
-        512
-      ]
-    },
-    {
-      "id": 3,
-      "type": "FakeScribblePreprocessor",
-      "pos": [
-        700,
-        742
-      ],
-      "size": [
-        354.9419921875,
-        82
-      ],
-      "flags": {},
-      "order": 7,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 3
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            52
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "FakeScribblePreprocessor"
-      },
-      "widgets_values": [
-        "enable",
-        512
-      ]
-    },
-    {
-      "id": 12,
-      "type": "DownloadAndLoadDepthAnythingV3Model",
-      "pos": [
-        100,
-        130
-      ],
-      "size": [
-        353.103125,
-        82
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "da3_model",
-          "type": "DA3MODEL",
-          "links": [
-            10
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui-depthanythingv3",
-        "ver": "0.0.11",
-        "Node name for S&R": "DownloadAndLoadDepthAnythingV3Model"
-      },
-      "widgets_values": [
-        "da3_large.safetensors",
-        "auto"
-      ]
-    },
-    {
-      "id": 5,
-      "type": "BAE-NormalMapPreprocessor",
-      "pos": [
-        700,
-        1166
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 9,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 5
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            53
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "BAE-NormalMapPreprocessor"
-      },
-      "widgets_values": [
-        512
-      ]
-    },
-    {
-      "id": 6,
-      "type": "SAMPreprocessor",
-      "pos": [
-        700,
-        1354
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 10,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 6
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": []
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "SAMPreprocessor"
-      },
-      "widgets_values": [
-        512
-      ]
-    },
-    {
-      "id": 17,
-      "type": "MediaPipe-FaceMeshPreprocessor",
-      "pos": [
-        700,
-        2602
-      ],
-      "size": [
-        270,
-        106
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 27
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            42
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "MediaPipe-FaceMeshPreprocessor"
-      },
-      "widgets_values": [
-        10,
-        0.5,
-        512
-      ]
-    },
-    {
-      "id": 7,
-      "type": "AIO_Preprocessor",
-      "pos": [
-        700,
-        1542
-      ],
-      "size": [
-        270,
-        82
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 7
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            54
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "AIO_Preprocessor"
-      },
-      "widgets_values": [
-        "ShufflePreprocessor",
-        512
-      ]
-    },
-    {
-      "id": 1,
-      "type": "OpenposePreprocessor",
-      "pos": [
-        700,
-        130
-      ],
-      "size": [
-        299.591796875,
-        174
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 1
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            56
-          ]
-        },
-        {
-          "name": "POSE_KEYPOINT",
-          "type": "POSE_KEYPOINT",
-          "links": null
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui_controlnet_aux",
-        "ver": "1.1.3",
-        "Node name for S&R": "OpenposePreprocessor"
-      },
-      "widgets_values": [
-        "enable",
-        "enable",
-        "enable",
-        512,
-        "disable"
-      ]
-    },
-    {
-      "id": 20,
-      "type": "CacheMapNode",
-      "pos": [
-        1154.9419921875,
-        130
-      ],
-      "size": [
-        353.390234375,
-        438
-      ],
-      "flags": {},
-      "order": 17,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "filename",
-          "type": "STRING",
-          "link": 30
-        },
-        {
-          "name": "source_browser",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 47
-        },
-        {
-          "name": "source_original",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 48
-        },
-        {
-          "name": "source_depth",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 55
-        },
-        {
-          "name": "source_canny",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 34
-        },
-        {
-          "name": "source_openpose",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 56
-        },
-        {
-          "name": "source_lineart",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 50
-        },
-        {
-          "name": "source_scribble",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 52
-        },
-        {
-          "name": "source_softedge",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 51
-        },
-        {
-          "name": "source_normal",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 53
-        },
-        {
-          "name": "source_seg",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 40
-        },
-        {
-          "name": "source_shuffle",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 54
-        },
-        {
-          "name": "source_mediapipe_face",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 42
-        },
-        {
-          "name": "source_custom",
-          "shape": 7,
-          "type": "IMAGE",
-          "link": 46
-        },
-        {
-          "name": "tags",
-          "shape": 7,
-          "type": "STRING",
-          "widget": {
-            "name": "tags"
-          },
-          "link": 44
-        }
-      ],
-      "outputs": [
-        {
-          "name": "map",
-          "type": "IMAGE",
-          "links": [
-            45,
-            57
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "Node name for S&R": "CacheMapNode"
-      },
-      "widgets_values": [
-        "D:\\ComfyUI7\\ComfyUI\\input\\maps",
-        "custom",
-        true,
-        true,
-        true,
-        ""
-      ]
-    },
-    {
-      "id": 21,
-      "type": "SaveWorkflowPreview",
-      "pos": [
-        -600,
-        900
-      ],
-      "size": [
-        303.7955078125,
-        178
-      ],
-      "flags": {},
-      "order": 19,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 57
-        }
-      ],
-      "outputs": [
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "links": null
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "aux_id": "erosDiffusion/ComfyUI-ZImageDit",
-        "ver": "0ea3e65cf2cf2312ef5a4123c456ee7283e35fb7",
-        "Node name for S&R": "SaveWorkflowPreview"
-      },
-      "widgets_values": [
-        "generatemaps",
-        "D:\\ComfyUI7\\ComfyUI\\custom_nodes\\ErosDiffusion-ControlnetMaps\\example_workflows",
-        85,
-        true,
-        true,
-        false
-      ]
-    },
-    {
-      "id": 19,
-      "type": "PrimitiveString",
-      "pos": [
-        -550,
-        350
-      ],
-      "size": [
-        270,
-        58
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            44
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfy-core",
-        "ver": "0.4.0",
-        "Node name for S&R": "PrimitiveString"
-      },
-      "widgets_values": [
-        "woman, drinking, camera front, one leg up, neutral, from below, long hair"
-      ]
-    },
-    {
-      "id": 15,
-      "type": "CacheMapBrowserNode",
-      "pos": [
-        50,
-        1200
-      ],
-      "size": [
-        365.4830078125,
-        386.0000000000002
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            47
-          ]
-        },
-        {
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "Node name for S&R": "CacheMapBrowserNode",
-        "cnr_id": "erosdiffusion-eulerflowmatchingdiscretescheduler",
-        "ver": "87b48e98f0bd6d37fafd2182adfb8919da7a1eb7"
-      },
-      "widgets_values": [
-        "D:\\ComfyUI7\\ComfyUI\\input\\maps",
-        "",
-        "openpose/ComfyUI_00027_.png",
-        null,
-        "run"
-      ]
-    },
-    {
-      "id": 10,
-      "type": "ImageMetadataExtractor",
-      "pos": [
-        -250,
-        2000
-      ],
-      "size": [
-        210,
-        386
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            27,
-            46,
-            48,
-            61
-          ]
-        },
-        {
-          "name": "positive_prompt",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "filename",
-          "type": "STRING",
-          "links": [
-            30
-          ]
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "Node name for S&R": "ImageMetadataExtractor",
-        "cnr_id": "erosdiffusion-eulerflowmatchingdiscretescheduler",
-        "ver": "87b48e98f0bd6d37fafd2182adfb8919da7a1eb7"
-      },
-      "widgets_values": [
-        "pexels-matheus-henrin-2068437.jpg",
-        "image"
-      ]
-    },
-    {
-      "id": 23,
-      "type": "ImageResizeKJv2",
-      "pos": [
-        300,
-        2200
-      ],
-      "size": [
-        270,
-        286
-      ],
-      "flags": {},
-      "order": 15,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 61
-        },
-        {
-          "name": "mask",
-          "shape": 7,
-          "type": "MASK",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "IMAGE",
-          "type": "IMAGE",
-          "links": [
-            60
-          ]
-        },
-        {
-          "name": "width",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "height",
-          "type": "INT",
-          "links": null
-        },
-        {
-          "name": "mask",
-          "type": "MASK",
-          "links": null
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {}
-        },
-        "cnr_id": "comfyui-kjnodes",
-        "ver": "1.1.9",
-        "Node name for S&R": "ImageResizeKJv2"
-      },
-      "widgets_values": [
-        768,
-        768,
-        "nearest-exact",
-        "resize",
-        "0, 0, 0",
-        "center",
-        2,
-        "cpu"
-      ]
-    },
-    {
-      "id": 18,
-      "type": "Note",
-      "pos": [
-        -600,
-        650
-      ],
-      "size": [
-        700,
-        150
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {},
-      "widgets_values": [
-        "<-- put the full path of install folder here, best to set into <your_comfyui_fullpath>input\\maps\n\ncheck the connections the map type is used when you generate one, but keep on custom and pass the original as well, just in case\n\ndisable the node below, you won't have it!!!\n\nthere are 2 db in the custom node\nmetadata.db\nand favorites.db you can delete them if they are broken , it should start over if they are not found"
-      ],
-      "color": "#432",
-      "bgcolor": "#653"
-    },
-    {
-      "id": 11,
-      "type": "DepthAnything_V3",
-      "pos": [
-        700,
-        2200
-      ],
-      "size": [
-        302.296875,
-        270
-      ],
-      "flags": {},
-      "order": 16,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "da3_model",
-          "type": "DA3MODEL",
-          "link": 10
-        },
-        {
-          "name": "images",
-          "type": "IMAGE",
-          "link": 60
-        },
-        {
-          "name": "camera_params",
-          "shape": 7,
-          "type": "CAMERA_PARAMS",
-          "link": null
-        }
-      ],
-      "outputs": [
-        {
-          "name": "depth",
-          "type": "IMAGE",
-          "links": [
-            55
-          ]
-        },
-        {
-          "name": "confidence",
-          "type": "IMAGE",
-          "links": null
-        },
-        {
-          "name": "resized_rgb_image",
-          "type": "IMAGE",
-          "links": null
-        },
-        {
-          "name": "ray_origin",
-          "type": "IMAGE",
-          "links": null
-        },
-        {
-          "name": "ray_direction",
-          "type": "IMAGE",
-          "links": null
-        },
-        {
-          "name": "extrinsics",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "intrinsics",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "sky_mask",
-          "type": "MASK",
-          "links": null
-        }
-      ],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.5.2"
-        },
-        "cnr_id": "comfyui-depthanythingv3",
-        "ver": "0.0.11",
-        "Node name for S&R": "DepthAnything_V3"
-      },
-      "widgets_values": [
-        "V2-Style",
-        "resize",
-        false,
-        false
-      ]
+    "class_type": "ImageMetadataExtractor",
+    "_meta": {
+      "title": "Load Image ErosDiffusion"
     }
-  ],
-  "links": [
-    [
-      1,
-      10,
-      0,
-      1,
-      0,
-      "IMAGE"
-    ],
-    [
-      2,
-      10,
-      0,
-      2,
-      0,
-      "IMAGE"
-    ],
-    [
-      3,
-      10,
-      0,
-      3,
-      0,
-      "IMAGE"
-    ],
-    [
-      4,
-      10,
-      0,
-      4,
-      0,
-      "IMAGE"
-    ],
-    [
-      5,
-      10,
-      0,
-      5,
-      0,
-      "IMAGE"
-    ],
-    [
-      6,
-      10,
-      0,
-      6,
-      0,
-      "IMAGE"
-    ],
-    [
-      7,
-      10,
-      0,
-      7,
-      0,
-      "IMAGE"
-    ],
-    [
-      8,
-      10,
-      0,
-      8,
-      0,
-      "IMAGE"
-    ],
-    [
-      9,
-      10,
-      0,
-      9,
-      0,
-      "IMAGE"
-    ],
-    [
-      10,
-      12,
-      0,
-      11,
-      0,
-      "DA3MODEL"
-    ],
-    [
-      27,
-      10,
-      0,
-      17,
-      0,
-      "IMAGE"
-    ],
-    [
-      30,
-      10,
-      4,
-      20,
-      0,
-      "STRING"
-    ],
-    [
-      34,
-      2,
-      0,
-      20,
-      4,
-      "IMAGE"
-    ],
-    [
-      40,
-      8,
-      0,
-      20,
-      10,
-      "IMAGE"
-    ],
-    [
-      42,
-      17,
-      0,
-      20,
-      12,
-      "IMAGE"
-    ],
-    [
-      44,
-      19,
-      0,
-      20,
-      14,
-      "STRING"
-    ],
-    [
-      45,
-      20,
-      0,
-      14,
-      0,
-      "IMAGE"
-    ],
-    [
-      46,
-      10,
-      0,
-      20,
-      13,
-      "IMAGE"
-    ],
-    [
-      47,
-      15,
-      0,
-      20,
-      1,
-      "IMAGE"
-    ],
-    [
-      48,
-      10,
-      0,
-      20,
-      2,
-      "IMAGE"
-    ],
-    [
-      50,
-      2,
-      0,
-      20,
-      6,
-      "IMAGE"
-    ],
-    [
-      51,
-      4,
-      0,
-      20,
-      8,
-      "IMAGE"
-    ],
-    [
-      52,
-      3,
-      0,
-      20,
-      7,
-      "IMAGE"
-    ],
-    [
-      53,
-      5,
-      0,
-      20,
-      9,
-      "IMAGE"
-    ],
-    [
-      54,
-      7,
-      0,
-      20,
-      11,
-      "IMAGE"
-    ],
-    [
-      55,
-      11,
-      0,
-      20,
-      3,
-      "IMAGE"
-    ],
-    [
-      56,
-      1,
-      0,
-      20,
-      5,
-      "IMAGE"
-    ],
-    [
-      57,
-      20,
-      0,
-      21,
-      0,
-      "IMAGE"
-    ],
-    [
-      60,
-      23,
-      0,
-      11,
-      1,
-      "IMAGE"
-    ],
-    [
-      61,
-      10,
-      0,
-      23,
-      0,
-      "IMAGE"
-    ]
-  ],
-  "groups": [],
-  "config": {},
-  "extra": {
-    "workflowRendererVersion": "LG",
-    "ue_links": [],
-    "links_added_by_ue": [],
-    "ds": {
-      "scale": 0.3581621004566214,
-      "offset": [
-        1640.3767211338384,
-        650.9724589921157
+  },
+  "14": {
+    "inputs": {
+      "images": [
+        "20",
+        0
       ]
     },
-    "frontendVersion": "1.34.8",
-    "VHS_latentpreview": false,
-    "VHS_latentpreviewrate": 0,
-    "VHS_MetadataImage": true,
-    "VHS_KeepIntermediate": true
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
   },
-  "version": 0.4,
-  "seed_widgets": {}
+  "19": {
+    "inputs": {
+      "value": "test"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "String"
+    }
+  },
+  "20": {
+    "inputs": {
+      "cache_path": "",
+      "map_type": "custom",
+      "save_if_new": true,
+      "force_generation": true,
+      "generate_all": true,
+      "tags": [
+        "19",
+        0
+      ],
+      "filename": [
+        "10",
+        4
+      ],
+      "source_original": [
+        "10",
+        0
+      ],
+      "source_depth": [
+        "45",
+        0
+      ],
+      "source_canny": [
+        "54",
+        0
+      ],
+      "source_openpose": [
+        "46",
+        0
+      ],
+      "source_lineart": [
+        "53",
+        0
+      ],
+      "source_scribble": [
+        "47",
+        0
+      ],
+      "source_softedge": [
+        "48",
+        0
+      ],
+      "source_normal": [
+        "49",
+        0
+      ],
+      "source_seg": [
+        "50",
+        0
+      ],
+      "source_shuffle": [
+        "51",
+        0
+      ],
+      "source_mediapipe_face": [
+        "52",
+        0
+      ],
+      "source_custom": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "CacheMapNode",
+    "_meta": {
+      "title": "ControlNet Map Cache (ErosDiffusion)"
+    }
+  },
+  "45": {
+    "inputs": {
+      "preprocessor": "DepthAnythingPreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "46": {
+    "inputs": {
+      "preprocessor": "OpenposePreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "47": {
+    "inputs": {
+      "preprocessor": "FakeScribblePreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "48": {
+    "inputs": {
+      "preprocessor": "HEDPreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "49": {
+    "inputs": {
+      "preprocessor": "DSINE-NormalMapPreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "50": {
+    "inputs": {
+      "preprocessor": "UniFormer-SemSegPreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "51": {
+    "inputs": {
+      "preprocessor": "ShufflePreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "52": {
+    "inputs": {
+      "preprocessor": "MediaPipe-FaceMeshPreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "53": {
+    "inputs": {
+      "preprocessor": "AnyLineArtPreprocessor_aux",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  },
+  "54": {
+    "inputs": {
+      "preprocessor": "CannyEdgePreprocessor",
+      "resolution": 512,
+      "image": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "AIO_Preprocessor",
+    "_meta": {
+      "title": "AIO Aux Preprocessor"
+    }
+  }
 }
