@@ -54,7 +54,7 @@ class CacheMapNode:
                 "filename": ("STRING", {"forceInput": True, "tooltip": "The unique identifier (base filename) for the map. Use 'Load Image ErosDiffusion' to extract this from a source image."}),
                 "map_type": (["auto"] + load_map_types() + ["browser"], {"default": "auto", "tooltip": "The type of map to handle. 'browser' is a pure pass-through."}),
                 "save_if_new": ("BOOLEAN", {"default": True, "tooltip": "If True, saves the generated map to the cache directory if it wasn't found."}),
-                "force_generation": ("BOOLEAN", {"default": False, "tooltip": "If True, ignores existing cache and forces regeneration + overwrite."}),
+                "force_generation": ("BOOLEAN", {"default": True, "tooltip": "If True, ignores existing cache and forces regeneration + overwrite."}),
                 "generate_all": ("BOOLEAN", {"default": False, "tooltip": "If True, triggers ALL connected preprocessors and saves their maps (respecting force_generation)."}),
             },
             "optional": {
@@ -78,6 +78,20 @@ class CacheMapNode:
 
     def _get_map_types(self):
          return load_map_types()
+
+    def _is_connected_input(self, val):
+        """Return True if `val` looks like a connected image input from ComfyUI.
+        Accepts either a torch.Tensor or a (tensor, ...) tuple/list as produced
+        by image outputs. This is used during lazy-checking to avoid asking the
+        scheduler to request inputs that are not actually connected.
+        """
+        if val is None:
+            return False
+        if isinstance(val, torch.Tensor):
+            return True
+        if isinstance(val, (list, tuple)) and len(val) > 0 and isinstance(val[0], torch.Tensor):
+            return True
+        return False
 
     def _get_cache_file_paths(self, cache_path, map_type, filename):
         # Normalize cache_path: use default maps dir when empty, and
@@ -121,13 +135,24 @@ class CacheMapNode:
                  return ["cache_path", "filename", "map_type", "save_if_new", "force_generation", "generate_all", f"source_{map_type}"]
 
         if map_type == "auto":
-            # Scan all types
+            # Prefer any truly connected source_<type> inputs first (so the
+            # scheduler only requests the connected one). Use the class helper
+            # `_is_connected_input` to detect real connected image values.
+            for type_check in self._get_map_types():
+                key = f"source_{type_check}"
+                try:
+                    val = kwargs.get(key, None)
+                    if self._is_connected_input(val):
+                        return ["cache_path", "filename", "map_type", "save_if_new", "force_generation", key]
+                except Exception:
+                    pass
+
+            # Scan filesystem for an existing cached map first
             for type_check in self._get_map_types():
                 _, file_paths = self._get_cache_file_paths(cache_path, type_check, filename)
                 if self._check_exists(file_paths):
-                    # print(f"[CacheMap] Auto-Hit: Found {type_check} map for {filename}. Skipping generation.")
                     return ["cache_path", "filename", "map_type", "save_if_new", "force_generation"]
-            
+
             # Not found: Request ALL inputs so the connected one runs
             print(f"[CacheMap] Auto-Miss: No map found. Requesting all inputs to trigger generation.")
             return ["cache_path", "filename", "map_type", "save_if_new", "force_generation", "generate_all"] + [f"source_{t}" for t in self._get_map_types()] + ["source_original"]
@@ -240,6 +265,9 @@ class CacheMapNode:
                 print(f"[CacheMap] No valid tags to process after filtering")
 
 
+        # Use the class helper `_is_connected_input` instead of a local helper.
+
+
         # Generate All Logic
         # Set up a defer-notify set when doing batch generation so we can
         # send frontend updates only after all maps are processed.
@@ -252,7 +280,7 @@ class CacheMapNode:
                     continue
 
                 source_img = kwargs.get(f"source_{type_check}")
-                if source_img is not None:
+                if self._is_connected_input(source_img):
                     # Check if we should save
                     target_dir, file_paths = self._get_cache_file_paths(cache_path, type_check, filename)
                     exists = self._check_exists(file_paths)
@@ -346,8 +374,9 @@ class CacheMapNode:
             # Find the first non-None input
             for type_check in self._get_map_types():
                 key = f"source_{type_check}"
-                if kwargs.get(key) is not None:
-                    generated_map = kwargs.get(key)
+                val = kwargs.get(key)
+                if self._is_connected_input(val):
+                    generated_map = val
                     target_type = type_check
                     break
         else:
