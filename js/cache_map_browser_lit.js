@@ -1015,7 +1015,7 @@ export class ErosLitBrowser extends LitElement {
               Run ▶
             </button>
           </div>
-          <div class="eros-drawer-close" @click=${this.close}>×</div>
+          <!-- close button removed: sidebar icon handles toggling -->
         </div>
 
         <div class="eros-wc-container">
