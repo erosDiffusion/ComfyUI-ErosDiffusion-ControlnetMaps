@@ -5,13 +5,12 @@ Save resources by skipping already done work!
 Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 
-**note**:
+> [!note]
+> this is an **Alpha** stage plugin and as such it will change often.
+> for this reason, as it might be unstable, it's not yet integrated with comfyUi manager.
+> If you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
-this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
-**important!!! this node does NOT generate the maps**:
-- it helps you organize in a well known folder input/maps them and use them fast via browser.
-- to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
 
 ## Installation
 
@@ -26,6 +25,16 @@ this is an **Alpha** stage plugin, if you want to support development feel free 
 3. **generateMaps**: open the baseWorkflowCanny from templates to generate your first map and cache it. pick a photo you licke and run. the map will now be available under "canny" filter and "original".
 4. **useMaps**: to select the map and use it choose the useCachedMaps workflow. open the Controlnet Map Browser sidebar and connect the node using the button "Open/Connect to map browser" in the map browser node. select a cached map. run the flow.
 5. **optional**, to **generate all maps** use the generateMaps workflow (requires you to install the map generator node).
+
+
+> [!important]
+> **this node does NOT generate the maps**:
+> - it helps you organize in a well known folder input/maps them and use them fast via browser.
+> - to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
+
+
+
+
 
 ## Changelog
 
@@ -85,20 +94,11 @@ You also find them in the ComfyUI templates sidebar
 ## Remarks
 
 - ctrl+click on existing tag adds to the current selected
-- tags are not duplicated
-- comma separate tags in input and hit enter to insert or provide at generation time
+- tags are not duplicated, so you can freely re-insert them
+- comma separate tags in input and hit enter to insert or provide at generation time. **automatic tagging is not yet implemented. but you can link an llm when generating maps**
 - filter using tags
-- type selection works but lable does not highlight
-- import is non destructive but additive (adds missing tags and images)
+- import is non destructive but additive (adds missing tags and images so feel free to import on top of what you have)
 
-## Paths & Defaults
-
-- Default cache root (node UI): `<ComfyUI input directory>/maps` (can be changed in the node's `cache_path`).
-- Cache layout: `<cache_path>/<map_type>/<basename>.png` and originals under `<cache_path>/original/`.
-
-## Tags & Metadata
-
-Provide a comma-separated `tags` string to `CacheMapNode` and tags will be parsed, normalized (deduplicated case-insensitive), and stored in a local metadata DB (see `metadata_manager.py`). The node also notifies the frontend when tags are updated.
 
 ## Troubleshooting
 
@@ -106,14 +106,19 @@ Provide a comma-separated `tags` string to `CacheMapNode` and tags will be parse
 - For `auto` mode misses, ensure the corresponding `source_<type>` input is connected so the preprocessor can run and generate the map.
 - If browser doesn't show files, confirm the UI has access to the configured `cache_path` and any `extra_path` you provided.
 
-
+## Roadmap
+- [ ] Integrate with ComfyUI Registry
+- [ ] Provide downloadable starter import .zip
+- [ ] Test and Optimize for large number of images
+- [ ] Implement automatic tagging
+- [ ] Implement automatic map generation (we'll see, AIO there's plugins for that)
 
 ## Contributing
 
 PRs welcome. Keep changes focused and add tests/examples where possible. Test it and tell me what's wrong.
 during the vanilla to lit porting something got off, so there are some regressions.
 
-## Support
+## Supporting
 If you feel like rich:  [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
 
