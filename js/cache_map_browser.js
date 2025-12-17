@@ -161,9 +161,61 @@ app.registerExtension({
                 })
               );
             } catch (e) {}
+
+            // Ensure the drawer component is connected to this node (connect event)
+            try {
+              if (typeof this.drawer.open === "function")
+                this.drawer.open(this);
+            } catch (e) {}
+
             if (sidebar) {
               try {
                 const id = this.drawer._sidebarId || "eros-cache-sidebar";
+                // Determine label for DOM lookup
+                const label = "Controlnet Map Browser";
+                // Check DOM button state: if the sidebar button is already selected/open,
+                // avoid executing the toggle command which would close it.
+                try {
+                  const btn = document.querySelector(
+                    `button[aria-label="${label}"]`
+                  );
+                  if (
+                    btn &&
+                    btn.classList.contains("side-bar-button-selected")
+                  ) {
+                    console.log(
+                      "[CacheMapBrowser] sidebar button already selected; will not toggle"
+                    );
+                    try {
+                      this.drawer.open(this);
+                    } catch (e) {}
+                    return;
+                  }
+                } catch (e) {}
+
+                // Try ComfyUI command API to toggle the sidebar tab (preferred)
+                try {
+                  if (
+                    app?.extensionManager?.command &&
+                    typeof app.extensionManager.command.execute === "function"
+                  ) {
+                    const cmd = `Workspace.ToggleSidebarTab.${id}`;
+                    console.log(
+                      "[CacheMapBrowser] executing command to toggle sidebar tab:",
+                      cmd
+                    );
+                    try {
+                      app.extensionManager.command.execute(cmd);
+                      try {
+                        this.drawer.open(this);
+                      } catch (e) {}
+                      return;
+                    } catch (e) {
+                      // ignore and continue to other methods
+                    }
+                  }
+                } catch (e) {}
+                // Try common API names first
                 if (typeof sidebar.openTab === "function") {
                   console.log(
                     "[CacheMapBrowser] calling sidebar.openTab(%s)",
@@ -209,8 +261,40 @@ app.registerExtension({
                   } catch (e) {}
                   return;
                 }
+
+                // Try any method with an 'open'/'show'/'activate'/'select' name
+                try {
+                  const tryNames = Object.getOwnPropertyNames(sidebar || {});
+                  for (const n of tryNames) {
+                    try {
+                      if (
+                        typeof sidebar[n] === "function" &&
+                        /open|show|activate|select/i.test(n)
+                      ) {
+                        console.log(
+                          "[CacheMapBrowser] calling sidebar.%s(%s)",
+                          n,
+                          id
+                        );
+                        try {
+                          sidebar[n](id);
+                        } catch (err) {
+                          // some methods may expect no args
+                          try {
+                            sidebar[n]();
+                          } catch (err2) {}
+                        }
+                        try {
+                          this.drawer.open(this);
+                        } catch (e) {}
+                        return;
+                      }
+                    } catch (err) {}
+                  }
+                } catch (err) {}
+
                 console.log(
-                  "[CacheMapBrowser] sidebar found but no known open method matched, will fallback to component.open"
+                  "[CacheMapBrowser] sidebar found but no known open method matched, already attempted drawer.open fallback"
                 );
               } catch (e) {
                 console.warn(
@@ -220,8 +304,11 @@ app.registerExtension({
               }
             }
 
-            // Fallback: call the component's open method
-            if (typeof this.drawer.open === "function") this.drawer.open(this);
+            // Final fallback: ensure drawer is opened (connect) — already attempted above
+            try {
+              if (typeof this.drawer.open === "function")
+                this.drawer.open(this);
+            } catch (e) {}
 
             // The browser instance updates the active (linked) node directly
             // when an image is selected. No global selection listeners are
