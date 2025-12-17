@@ -78,6 +78,13 @@ class CacheMapNode:
          return load_map_types()
 
     def _get_cache_file_paths(self, cache_path, map_type, filename):
+        # Normalize cache_path: use default maps dir when empty, and
+        # resolve relative paths against Comfy input directory.
+        if not cache_path:
+            cache_path = default_maps_dir
+        elif not os.path.isabs(cache_path):
+            cache_path = os.path.join(folder_paths.get_input_directory(), cache_path)
+
         basename = os.path.splitext(os.path.basename(filename))[0]
         target_dir = os.path.join(cache_path, map_type)
         extensions = [".png", ".jpg", ".jpeg", ".webp"]
@@ -141,6 +148,13 @@ class CacheMapNode:
         tags_str = kwargs.get("tags", "")
         print(f"[CacheMap] process() called - filename='{filename}', map_type='{map_type}', tags='{tags_str}', force_generation={force_generation}, generate_all={generate_all}")
         
+        # Normalize cache_path early so all subsequent operations use a
+        # resolved absolute path. If empty, default to the Comfy input/maps dir.
+        if not cache_path:
+            cache_path = default_maps_dir
+        elif not os.path.isabs(cache_path):
+            cache_path = os.path.join(folder_paths.get_input_directory(), cache_path)
+
         # Browser Passthrough
         if map_type == "browser":
             img = kwargs.get("source_browser")

@@ -125,10 +125,15 @@ app.registerExtension({
 
           // Dispatch open event and call open() if available
           try {
-            window.dispatchEvent(new CustomEvent("eros.cache.browser.open", { detail: { node: selectedItem } }));
+            window.dispatchEvent(
+              new CustomEvent("eros.cache.browser.open", {
+                detail: { node: selectedItem },
+              })
+            );
           } catch (e) {}
           try {
-            if (browser && typeof browser.open === "function") browser.open(selectedItem);
+            if (browser && typeof browser.open === "function")
+              browser.open(selectedItem);
           } catch (e) {}
         } catch (e) {
           console.error("eros-cache: open-connect command failed", e);
