@@ -13,6 +13,12 @@ import folder_paths
 from server import PromptServer
 from aiohttp import web
 from .metadata_manager import MetadataManager
+import tempfile
+import zipfile
+import sqlite3
+import shutil
+from datetime import datetime
+import time
 
 # Config & Persistence
 NODE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -40,6 +46,348 @@ def load_map_types():
             print(f"[CacheMap] Error loading config: {e}")
             return ["depth", "canny", "openpose", "lineart", "scribble", "softedge", "normal", "seg", "shuffle", "mediapipe_face", "custom"]
     return ["depth", "canny", "openpose", "lineart", "scribble", "softedge", "normal", "seg", "shuffle", "mediapipe_face", "custom"]
+
+
+def _resolve_cache_root(raw_path: str) -> str:
+    """Resolve a cache root path.
+
+    For safety, export/import/reset are restricted to paths under the ComfyUI
+    input directory.
+    """
+    input_dir = os.path.abspath(folder_paths.get_input_directory())
+    if not raw_path:
+        target = default_maps_dir
+    else:
+        target = raw_path
+        if not os.path.isabs(target):
+            target = os.path.join(input_dir, target)
+
+    target = os.path.abspath(target)
+    try:
+        if os.path.commonpath([input_dir, target]) != input_dir:
+            raise ValueError("cache_path must be within ComfyUI input directory")
+    except Exception:
+        raise ValueError("Invalid cache_path")
+    return target
+
+
+def _safe_zip_members(zf: zipfile.ZipFile):
+    for info in zf.infolist():
+        name = info.filename
+        if not name or name.endswith("/"):
+            continue
+        # Zip paths are always forward-slash separated.
+        parts = [p for p in name.split("/") if p]
+        if any(p == ".." for p in parts):
+            continue
+        if name.startswith("/") or name.startswith("\\"):
+            continue
+        yield info
+
+
+def _sanitize_favorite_path(value: str, cache_root: str) -> str:
+    if value is None:
+        return ""
+    s = str(value)
+    s_strip = s.strip()
+    if not s_strip:
+        return ""
+
+    # Normalize slashes for storage in DB.
+    s_norm = s_strip.replace("\\", "/")
+
+    # If absolute, try to make it relative to cache_root.
+    looks_abs = (
+        len(s_norm) >= 2 and s_norm[1] == ":"
+    ) or s_norm.startswith("/") or s_norm.startswith("\\\\")
+    if looks_abs:
+        try:
+            rel = os.path.relpath(s_strip, start=cache_root)
+            rel = rel.replace("\\", "/")
+            if not rel.startswith(".."):  # within cache_root
+                return rel
+        except Exception:
+            pass
+        parts = [p for p in s_norm.split("/") if p]
+        if len(parts) >= 2:
+            return "/".join(parts[-2:])
+        return parts[-1] if parts else s_norm
+
+    return s_norm
+
+
+def _sanitize_image_key(value: str) -> str:
+    if value is None:
+        return ""
+    s = str(value).strip()
+    if not s:
+        return ""
+    s = s.replace("\\", "/")
+    last = s.split("/")[-1]
+    base = os.path.splitext(last)[0]
+    return base
+
+
+def _dump_sqlite_db_to_sql(db_path: str, cache_root: str) -> str:
+    """Dump SQLite DB to SQL, sanitizing known path fields to be relative."""
+    try:
+        conn = sqlite3.connect(db_path)
+        try:
+            lines = []
+            for line in conn.iterdump():
+                # Sanitize favorites.path and image_tags.image_path when present.
+                # Handles forms like:
+                # INSERT INTO "favorites" VALUES('path',123.0);
+                # INSERT INTO favorites VALUES('path',123.0);
+                # INSERT INTO "image_tags" VALUES('image',1,123.0);
+                lowered = line.lower()
+                if lowered.startswith("insert into \"favorites\" values(") or lowered.startswith(
+                    "insert into favorites values("
+                ):
+                    try:
+                        # first quoted string after VALUES(
+                        start = line.find("VALUES(")
+                        if start != -1:
+                            frag = line[start + len("VALUES(") :]
+                            if frag.startswith("'"):
+                                end = frag.find("',")
+                                if end != -1:
+                                    raw = frag[1:end].replace("''", "'")
+                                    sanitized = _sanitize_favorite_path(raw, cache_root)
+                                    sanitized_sql = sanitized.replace("'", "''")
+                                    line = (
+                                        line[: start + len("VALUES(")]
+                                        + "'"
+                                        + sanitized_sql
+                                        + frag[end:]
+                                    )
+                    except Exception:
+                        pass
+                elif lowered.startswith("insert into \"image_tags\" values(") or lowered.startswith(
+                    "insert into image_tags values("
+                ):
+                    try:
+                        start = line.find("VALUES(")
+                        if start != -1:
+                            frag = line[start + len("VALUES(") :]
+                            if frag.startswith("'"):
+                                end = frag.find("',")
+                                if end != -1:
+                                    raw = frag[1:end].replace("''", "'")
+                                    sanitized = _sanitize_image_key(raw)
+                                    sanitized_sql = sanitized.replace("'", "''")
+                                    line = (
+                                        line[: start + len("VALUES(")]
+                                        + "'"
+                                        + sanitized_sql
+                                        + frag[end:]
+                                    )
+                    except Exception:
+                        pass
+
+                lines.append(line)
+            return "\n".join(lines) + "\n"
+        finally:
+            conn.close()
+    except Exception as e:
+        return f"-- failed to dump {os.path.basename(db_path)}: {e}\n"
+
+
+def _create_temp_db_from_sql(sql_text: str) -> str:
+    fd, tmp_db = tempfile.mkstemp(prefix="eros_import_tmp_", suffix=".db")
+    os.close(fd)
+    conn = sqlite3.connect(tmp_db)
+    try:
+        conn.executescript(sql_text)
+        conn.commit()
+    finally:
+        conn.close()
+    return tmp_db
+
+
+def _merge_metadata_db_from_sql(target_db_path: str, sql_text: str, cache_root: str) -> dict:
+    """Merge metadata.db content from a SQL dump, non-destructively."""
+    stats = {
+        "favorites_added": 0,
+        "tags_added": 0,
+        "image_tags_added": 0,
+    }
+
+    tmp_db = None
+    try:
+        # Ensure target schema exists
+        try:
+            MetadataManager(target_db_path)
+        except Exception:
+            pass
+
+        tmp_db = _create_temp_db_from_sql(sql_text)
+
+        src = sqlite3.connect(tmp_db)
+        dst = sqlite3.connect(target_db_path)
+        try:
+            dst.execute("PRAGMA foreign_keys=ON")
+
+            before = dst.total_changes
+            try:
+                rows = src.execute("SELECT path, added_at FROM favorites").fetchall()
+                for path, added_at in rows:
+                    sp = _sanitize_favorite_path(path, cache_root)
+                    if not sp:
+                        continue
+                    dst.execute(
+                        "INSERT OR IGNORE INTO favorites(path, added_at) VALUES (?, ?)",
+                        (sp, float(added_at) if added_at is not None else time.time()),
+                    )
+            except Exception:
+                pass
+            dst.commit()
+            stats["favorites_added"] = max(0, dst.total_changes - before)
+
+            # Merge tags by name
+            before = dst.total_changes
+            try:
+                tag_rows = src.execute("SELECT name FROM tags").fetchall()
+                for (name,) in tag_rows:
+                    if not name:
+                        continue
+                    dst.execute("INSERT OR IGNORE INTO tags(name) VALUES (?)", (str(name),))
+            except Exception:
+                pass
+            dst.commit()
+            stats["tags_added"] = max(0, dst.total_changes - before)
+
+            # Build dst name->id map
+            name_to_id = {}
+            try:
+                for tid, name in dst.execute("SELECT id, name FROM tags").fetchall():
+                    name_to_id[str(name)] = int(tid)
+            except Exception:
+                name_to_id = {}
+
+            # Merge image_tags by (image_path, tag_name)
+            before = dst.total_changes
+            try:
+                rows = src.execute(
+                    """
+                    SELECT it.image_path, t.name, it.added_at
+                    FROM image_tags it
+                    JOIN tags t ON t.id = it.tag_id
+                    """
+                ).fetchall()
+                for image_path, tag_name, added_at in rows:
+                    key = _sanitize_image_key(image_path)
+                    if not key or not tag_name:
+                        continue
+                    dst_tid = name_to_id.get(str(tag_name))
+                    if not dst_tid:
+                        # Create missing tag then refetch id
+                        try:
+                            dst.execute("INSERT OR IGNORE INTO tags(name) VALUES (?)", (str(tag_name),))
+                            dst.commit()
+                            r = dst.execute("SELECT id FROM tags WHERE name = ?", (str(tag_name),)).fetchone()
+                            if r:
+                                dst_tid = int(r[0])
+                                name_to_id[str(tag_name)] = dst_tid
+                        except Exception:
+                            dst_tid = None
+                    if not dst_tid:
+                        continue
+
+                    dst.execute(
+                        """
+                        INSERT OR IGNORE INTO image_tags(image_path, tag_id, added_at)
+                        VALUES (?, ?, ?)
+                        """,
+                        (key, dst_tid, float(added_at) if added_at is not None else time.time()),
+                    )
+            except Exception:
+                pass
+            dst.commit()
+            stats["image_tags_added"] = max(0, dst.total_changes - before)
+        finally:
+            try:
+                src.close()
+            except Exception:
+                pass
+            try:
+                dst.close()
+            except Exception:
+                pass
+    finally:
+        try:
+            if tmp_db and os.path.exists(tmp_db):
+                os.remove(tmp_db)
+        except Exception:
+            pass
+
+    return stats
+
+
+def _merge_generic_db_from_sql(target_db_path: str, sql_text: str) -> dict:
+    """Best-effort non-destructive merge for unknown DBs.
+
+    - If DB doesn't exist: create it from SQL.
+    - If it exists: create temp DB from SQL and INSERT OR IGNORE rows table-by-table.
+    """
+    stats = {"created": False, "rows_added": 0}
+
+    if not os.path.exists(target_db_path):
+        conn = sqlite3.connect(target_db_path)
+        try:
+            conn.executescript(sql_text)
+            conn.commit()
+            stats["created"] = True
+        finally:
+            conn.close()
+        return stats
+
+    tmp_db = None
+    try:
+        tmp_db = _create_temp_db_from_sql(sql_text)
+        dst = sqlite3.connect(target_db_path)
+        try:
+            before = dst.total_changes
+            dst.execute("ATTACH DATABASE ? AS src", (tmp_db,))
+            try:
+                tables = dst.execute(
+                    "SELECT name, sql FROM src.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                ).fetchall()
+                for name, create_sql in tables:
+                    if not name:
+                        continue
+                    # Ensure table exists
+                    exists = dst.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                        (name,),
+                    ).fetchone()
+                    if not exists and create_sql:
+                        try:
+                            dst.execute(create_sql)
+                        except Exception:
+                            pass
+
+                    try:
+                        dst.execute(f"INSERT OR IGNORE INTO {name} SELECT * FROM src.{name}")
+                    except Exception:
+                        pass
+                dst.commit()
+            finally:
+                try:
+                    dst.execute("DETACH DATABASE src")
+                except Exception:
+                    pass
+            stats["rows_added"] = max(0, dst.total_changes - before)
+        finally:
+            dst.close()
+    finally:
+        try:
+            if tmp_db and os.path.exists(tmp_db):
+                os.remove(tmp_db)
+        except Exception:
+            pass
+
+    return stats
 
 
 class CacheMapNode:
@@ -821,5 +1169,291 @@ async def delete_map(request):
             pass
 
         return web.json_response({"success": True, "deleted": deleted, "removed_tag_links": removed_count})
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.get("/eros/cache/export_zip")
+async def export_zip(request):
+    """Export cache folder + sqlite dbs as a zip.
+
+    Query params:
+      - path: optional cache root (relative to input dir). Defaults to input/maps.
+    """
+    try:
+        raw_path = request.rel_url.query.get("path", "")
+        cache_root = _resolve_cache_root(raw_path)
+
+        if not os.path.exists(cache_root):
+            os.makedirs(cache_root, exist_ok=True)
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_name = f"eros_maps_export_{ts}.zip"
+
+        fd, tmp_path = tempfile.mkstemp(prefix="eros_maps_export_", suffix=".zip")
+        os.close(fd)
+
+        input_dir = os.path.abspath(folder_paths.get_input_directory())
+        cache_rel = os.path.relpath(cache_root, start=input_dir).replace("\\", "/")
+
+        try:
+            with zipfile.ZipFile(tmp_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                # maps/*
+                for root, dirs, files in os.walk(cache_root):
+                    for f in files:
+                        full = os.path.join(root, f)
+                        rel = os.path.relpath(full, start=cache_root).replace("\\", "/")
+                        zf.write(full, arcname=f"maps/{rel}")
+
+                # db/*.sql
+                db_files = [
+                    os.path.join(NODE_DIR, f)
+                    for f in os.listdir(NODE_DIR)
+                    if f.lower().endswith(".db") and os.path.isfile(os.path.join(NODE_DIR, f))
+                ]
+                # Always include the metadata.db dump even if the file is missing
+                # (fresh install) so imports can still recreate it.
+                if DB_PATH not in db_files:
+                    db_files.append(DB_PATH)
+
+                for dbp in db_files:
+                    db_name = os.path.basename(dbp)
+                    sql_text = _dump_sqlite_db_to_sql(dbp, cache_root)
+                    zf.writestr(f"db/{db_name}.sql", sql_text)
+
+                # manifest
+                manifest = {
+                    "version": 1,
+                    "cache_root": cache_rel,
+                    "exported_at": ts,
+                    "db": [os.path.basename(p) + ".sql" for p in db_files],
+                }
+                zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+            with open(tmp_path, "rb") as rf:
+                body = rf.read()
+
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+            return web.Response(
+                body=body,
+                headers={
+                    "Content-Type": "application/zip",
+                    "Content-Disposition": f'attachment; filename="{out_name}"',
+                },
+            )
+        except Exception:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
+            raise
+    except ValueError as ve:
+        return web.json_response({"error": str(ve)}, status=400)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.post("/eros/cache/import_zip")
+async def import_zip(request):
+    """Import a zip created by /eros/cache/export_zip.
+
+    Query params:
+      - path: optional cache root (relative to input dir). Defaults to input/maps.
+
+    Non-destructive merge: keeps existing local cache + DBs and adds missing data.
+    """
+    global metadata_manager
+    try:
+        raw_path = request.rel_url.query.get("path", "")
+        cache_root = _resolve_cache_root(raw_path)
+        os.makedirs(cache_root, exist_ok=True)
+
+        reader = await request.multipart()
+        part = None
+        while True:
+            p = await reader.next()
+            if p is None:
+                break
+            if p.name in ("file", "archive"):
+                part = p
+                break
+
+        if not part:
+            return web.json_response({"error": "Missing upload field 'file'"}, status=400)
+
+        fd, tmp_zip = tempfile.mkstemp(prefix="eros_maps_import_", suffix=".zip")
+        os.close(fd)
+        try:
+            with open(tmp_zip, "wb") as f:
+                while True:
+                    chunk = await part.read_chunk(size=1024 * 512)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+
+            imported_files = 0
+            skipped_files = 0
+            imported_dbs = 0
+            db_rows_added = 0
+            metadata_merge = {"favorites_added": 0, "tags_added": 0, "image_tags_added": 0}
+
+            with zipfile.ZipFile(tmp_zip, "r") as zf:
+                sql_by_db = {}
+                for info in _safe_zip_members(zf):
+                    name = info.filename
+                    if name.startswith("maps/"):
+                        rel = name[len("maps/") :]
+                        if not rel:
+                            continue
+                        # Prevent zip slip
+                        rel_parts = [p for p in rel.split("/") if p]
+                        if any(p == ".." for p in rel_parts):
+                            continue
+                        dest = os.path.abspath(os.path.join(cache_root, *rel_parts))
+                        if os.path.commonpath([cache_root, dest]) != cache_root:
+                            continue
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        if os.path.exists(dest):
+                            skipped_files += 1
+                        else:
+                            with zf.open(info, "r") as src, open(dest, "wb") as out:
+                                shutil.copyfileobj(src, out)
+                            imported_files += 1
+                    elif name.startswith("db/") and name.endswith(".sql"):
+                        db_name = os.path.basename(name[:-4])  # strip .sql
+                        try:
+                            sql_text = zf.read(info).decode("utf-8", errors="replace")
+                            sql_by_db[db_name] = sql_text
+                        except Exception:
+                            pass
+
+                # Restore DBs from SQL
+                for db_name, sql_text in sql_by_db.items():
+                    # db_name should be like metadata.db
+                    if not db_name.lower().endswith(".db"):
+                        continue
+                    db_path = os.path.join(NODE_DIR, db_name)
+                    try:
+                        if os.path.abspath(db_path) == os.path.abspath(DB_PATH):
+                            m = _merge_metadata_db_from_sql(db_path, sql_text, cache_root)
+                            metadata_merge["favorites_added"] += int(m.get("favorites_added", 0) or 0)
+                            metadata_merge["tags_added"] += int(m.get("tags_added", 0) or 0)
+                            metadata_merge["image_tags_added"] += int(m.get("image_tags_added", 0) or 0)
+                            db_rows_added += (
+                                int(m.get("favorites_added", 0) or 0)
+                                + int(m.get("tags_added", 0) or 0)
+                                + int(m.get("image_tags_added", 0) or 0)
+                            )
+                            imported_dbs += 1
+                        else:
+                            g = _merge_generic_db_from_sql(db_path, sql_text)
+                            db_rows_added += int(g.get("rows_added", 0) or 0)
+                            imported_dbs += 1
+                    except Exception:
+                        # best-effort; continue
+                        pass
+
+            # Re-init metadata manager to ensure schema is available post-import
+            try:
+                metadata_manager = MetadataManager(DB_PATH)
+            except Exception:
+                pass
+
+            try:
+                PromptServer.instance.send_sync(
+                    "eros.cache.imported",
+                    {
+                        "imported_files": imported_files,
+                        "skipped_files": skipped_files,
+                        "imported_dbs": imported_dbs,
+                        "db_rows_added": db_rows_added,
+                        "metadata_merge": metadata_merge,
+                    },
+                )
+            except Exception:
+                pass
+
+            return web.json_response(
+                {
+                    "success": True,
+                    "imported_files": imported_files,
+                    "skipped_files": skipped_files,
+                    "imported_dbs": imported_dbs,
+                    "db_rows_added": db_rows_added,
+                    "metadata_merge": metadata_merge,
+                }
+            )
+        finally:
+            try:
+                if os.path.exists(tmp_zip):
+                    os.remove(tmp_zip)
+            except Exception:
+                pass
+    except ValueError as ve:
+        return web.json_response({"error": str(ve)}, status=400)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
+
+
+@PromptServer.instance.routes.post("/eros/cache/reset")
+async def reset_cache(request):
+    """Delete all cached maps under cache root and wipe DB(s)."""
+    global metadata_manager
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    try:
+        raw_path = data.get("path", "") if isinstance(data, dict) else ""
+        cache_root = _resolve_cache_root(raw_path)
+        os.makedirs(cache_root, exist_ok=True)
+
+        removed_files = 0
+        for name in os.listdir(cache_root):
+            p = os.path.join(cache_root, name)
+            try:
+                if os.path.isdir(p):
+                    shutil.rmtree(p)
+                else:
+                    os.remove(p)
+                removed_files += 1
+            except Exception:
+                pass
+
+        removed_dbs = 0
+        for f in os.listdir(NODE_DIR):
+            if f.lower().endswith(".db"):
+                dbp = os.path.join(NODE_DIR, f)
+                if os.path.isfile(dbp):
+                    try:
+                        os.remove(dbp)
+                        removed_dbs += 1
+                    except Exception:
+                        pass
+
+        try:
+            metadata_manager = MetadataManager(DB_PATH)
+        except Exception:
+            pass
+
+        try:
+            PromptServer.instance.send_sync(
+                "eros.cache.reset",
+                {"removed_files": removed_files, "removed_dbs": removed_dbs},
+            )
+        except Exception:
+            pass
+
+        return web.json_response(
+            {"success": True, "removed_files": removed_files, "removed_dbs": removed_dbs}
+        )
+    except ValueError as ve:
+        return web.json_response({"error": str(ve)}, status=400)
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)

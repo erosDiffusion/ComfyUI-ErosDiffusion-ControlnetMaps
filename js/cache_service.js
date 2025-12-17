@@ -166,4 +166,50 @@ export class CacheService {
       return { success: false, error: String(e) };
     }
   }
+
+  async exportZip() {
+    const url = `/eros/cache/export_zip?path=${encodeURIComponent(
+      this.cachePath || ""
+    )}`;
+    const resp = await api.fetchApi(url);
+    if (!resp.ok) {
+      let msg = `Export failed (${resp.status})`;
+      try {
+        const j = await resp.json();
+        if (j && j.error) msg = j.error;
+      } catch {}
+      throw new Error(msg);
+    }
+    return await resp.blob();
+  }
+
+  async importZip(file) {
+    if (!file) throw new Error("Missing file");
+    const url = `/eros/cache/import_zip?path=${encodeURIComponent(
+      this.cachePath || ""
+    )}`;
+    const fd = new FormData();
+    fd.append("file", file, file.name || "import.zip");
+    const resp = await api.fetchApi(url, {
+      method: "POST",
+      body: fd,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data || data.success === false) {
+      throw new Error((data && data.error) || `Import failed (${resp.status})`);
+    }
+    return data;
+  }
+
+  async resetAll() {
+    const resp = await api.fetchApi("/eros/cache/reset", {
+      method: "POST",
+      body: JSON.stringify({ path: this.cachePath || "" }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data || data.success === false) {
+      throw new Error((data && data.error) || `Reset failed (${resp.status})`);
+    }
+    return data;
+  }
 }

@@ -34,6 +34,8 @@ import { api } from "../../scripts/api.js";
       "eros.image.deleted",
       "eros.map.saved",
       "eros.image.saved",
+      "eros.cache.imported",
+      "eros.cache.reset",
     ].forEach(forward);
   } catch (e) {
     // ignore

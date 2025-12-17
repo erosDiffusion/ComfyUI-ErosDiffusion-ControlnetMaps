@@ -12,6 +12,7 @@ import {
 } from "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js";
 import { DRAWER_CSS } from "./cache_map_styles.js";
 import { CacheService } from "./cache_service.js";
+import { toast, confirmDialog, downloadBlob } from "./eros_ui.js";
 
 // Share styles via Constructable Stylesheets if possible, or inject
 // Lit supports 'styles' static property.
@@ -718,6 +719,9 @@ export class ErosLitBrowser extends LitElement {
     tagSearchQuery: { type: String },
     currentTab: { type: String },
     selectedFilename: { type: String },
+    _busyExport: { type: Boolean },
+    _busyImport: { type: Boolean },
+    _busyReset: { type: Boolean },
   };
 
   constructor() {
@@ -728,6 +732,9 @@ export class ErosLitBrowser extends LitElement {
     this.activeFilters = new Set();
     this.settings = {};
     this.isOpen = false;
+    this._busyExport = false;
+    this._busyImport = false;
+    this._busyReset = false;
     this._patchedContainer = null;
     this._originalContainerStyle = null;
 
@@ -789,33 +796,15 @@ export class ErosLitBrowser extends LitElement {
       this._sidebarMethod
     );
     this.cache.loadTags();
-    // Use the Comfy `api` event system to forward backend `eros.*` messages
-    // into DOM CustomEvents so the rest of the UI can listen for them.
-    try {
-      if (window.api && typeof window.api.addEventListener === "function") {
-        const forward = (type) => {
-          try {
-            api.addEventListener(type, (ev) => {
-              try {
-                // ev may already carry the payload in different shapes; prefer ev.data, then ev.detail, then ev
-                const payload = (ev && (ev.data || ev.detail)) || ev;
-                window.dispatchEvent(
-                  new CustomEvent(type, { detail: payload })
-                );
-              } catch (e) {}
-            });
-          } catch (e) {}
-        };
-        [
-          "eros.tags.updated",
-          "eros.image.deleted",
-          "eros.map.saved",
-          "eros.image.saved",
-        ].forEach(forward);
-      }
-    } catch (e) {}
     // Listen for backend-driven updates (tags, image deleted/saved) so the
     // sidebar refreshes immediately when maps are created/deleted/tags change.
+    this._onCacheChanged = async (ev) => {
+      try {
+        await this.fetchFiles(false, true);
+        await this.cache.loadTags();
+        this.requestUpdate();
+      } catch (e) {}
+    };
     this._onTagsUpdated = async (ev) => {
       try {
         await this.cache.loadTags();
@@ -852,6 +841,8 @@ export class ErosLitBrowser extends LitElement {
       window.addEventListener("eros.image.deleted", this._onImageDeleted);
       window.addEventListener("eros.map.saved", this._onMapSaved);
       window.addEventListener("eros.image.saved", this._onMapSaved);
+      window.addEventListener("eros.cache.imported", this._onCacheChanged);
+      window.addEventListener("eros.cache.reset", this._onCacheChanged);
     } catch (e) {}
     // Default to 'original' when opened manually (no linked node)
     if (!this.currentTab) this.currentTab = "original";
@@ -873,6 +864,8 @@ export class ErosLitBrowser extends LitElement {
       window.removeEventListener("eros.image.deleted", this._onImageDeleted);
       window.removeEventListener("eros.map.saved", this._onMapSaved);
       window.removeEventListener("eros.image.saved", this._onMapSaved);
+      window.removeEventListener("eros.cache.imported", this._onCacheChanged);
+      window.removeEventListener("eros.cache.reset", this._onCacheChanged);
     } catch (e) {}
     try {
       super.disconnectedCallback();
@@ -1178,6 +1171,172 @@ export class ErosLitBrowser extends LitElement {
             >
               Run ▶
             </button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+            <button
+              class="eros-btn-small"
+              style="font-size:12px;padding:2px 8px;"
+              ?disabled=${this._busyExport}
+              @click=${async () => {
+                if (this._busyExport) return;
+                this._busyExport = true;
+                this.requestUpdate();
+                toast({
+                  severity: "info",
+                  summary: "Export",
+                  detail: "Preparing export zip...",
+                  life: 2000,
+                });
+                try {
+                  const blob = await this.cache.exportZip();
+                  const ts = new Date().toISOString().replace(/[:.]/g, "-");
+                  downloadBlob(blob, `eros_maps_export_${ts}.zip`);
+                  toast({
+                    severity: "success",
+                    summary: "Export",
+                    detail: "Download started",
+                    life: 2500,
+                  });
+                } catch (e) {
+                  toast({
+                    severity: "error",
+                    summary: "Export failed",
+                    detail: String(e?.message || e),
+                    life: 5000,
+                  });
+                } finally {
+                  this._busyExport = false;
+                  this.requestUpdate();
+                }
+              }}
+            >
+              Export
+            </button>
+
+            <button
+              class="eros-btn-small"
+              style="font-size:12px;padding:2px 8px;"
+              ?disabled=${this._busyImport}
+              @click=${() => {
+                try {
+                  const inp = this.shadowRoot.getElementById(
+                    "eros-import-zip"
+                  );
+                  inp && inp.click();
+                } catch (e) {}
+              }}
+            >
+              Import
+            </button>
+
+            <button
+              class="eros-btn-small"
+              style="font-size:12px;padding:2px 8px;background:#8b2a2a;"
+              ?disabled=${this._busyReset || this._busyImport || this._busyExport}
+              @click=${async () => {
+                if (this._busyReset) return;
+                const ok = await confirmDialog({
+                  title: "Reset maps + metadata",
+                  message:
+                    "This will delete ALL cached maps under the current cache path and wipe the metadata database. This cannot be undone.",
+                  type: "delete",
+                });
+                if (!ok) return;
+
+                this._busyReset = true;
+                this.requestUpdate();
+                toast({
+                  severity: "warn",
+                  summary: "Reset",
+                  detail: "Resetting...",
+                  life: 2500,
+                });
+                try {
+                  await this.cache.resetAll();
+                  this.selectedFilename = null;
+                  this.activeFilters = new Set();
+                  this.tagSearchQuery = "";
+                  this.cache.imageTags.clear();
+                  await this.cache.loadTags();
+                  await this.fetchFiles(false, true);
+                  toast({
+                    severity: "success",
+                    summary: "Reset",
+                    detail: "Cache and metadata cleared",
+                    life: 3000,
+                  });
+                } catch (e) {
+                  toast({
+                    severity: "error",
+                    summary: "Reset failed",
+                    detail: String(e?.message || e),
+                    life: 5000,
+                  });
+                } finally {
+                  this._busyReset = false;
+                  this.requestUpdate();
+                }
+              }}
+            >
+              Reset
+            </button>
+
+            <input
+              id="eros-import-zip"
+              type="file"
+              accept=".zip"
+              style="display:none"
+              @change=${async (e) => {
+                try {
+                  const file = e?.target?.files?.[0];
+                  e.target.value = "";
+                  if (!file) return;
+
+                  const ok = await confirmDialog({
+                    title: "Import maps + metadata",
+                    message:
+                      "Import is non-destructive: it keeps your existing cached maps and metadata and adds only missing files/rows. Continue?",
+                    type: "overwrite",
+                  });
+                  if (!ok) return;
+
+                  this._busyImport = true;
+                  this.requestUpdate();
+                  toast({
+                    severity: "info",
+                    summary: "Import",
+                    detail: "Importing zip...",
+                    life: 2500,
+                  });
+                  const res = await this.cache.importZip(file);
+
+                  this.selectedFilename = null;
+                  this.activeFilters = new Set();
+                  this.tagSearchQuery = "";
+                  this.cache.imageTags.clear();
+                  await this.cache.loadTags();
+                  await this.fetchFiles(false, true);
+
+                  toast({
+                    severity: "success",
+                    summary: "Import",
+                    detail: `Imported ${res.imported_files || 0} files`,
+                    life: 3500,
+                  });
+                } catch (err) {
+                  toast({
+                    severity: "error",
+                    summary: "Import failed",
+                    detail: String(err?.message || err),
+                    life: 5000,
+                  });
+                } finally {
+                  this._busyImport = false;
+                  this.requestUpdate();
+                }
+              }}
+            />
           </div>
           <!-- close button removed: sidebar icon handles toggling -->
         </div>
