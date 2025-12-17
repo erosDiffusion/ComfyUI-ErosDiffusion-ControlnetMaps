@@ -7,7 +7,7 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
-**important!!! this node does NOT generate the maps**, it helps you organize and use them. to generate the maps you will need other nodes (Aio AUX preprocessor, canny , depth anything or whatever you like!)
+**important!!! this node does NOT generate the maps**, it helps you organize and use them. to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
 
 ## Installation
 
