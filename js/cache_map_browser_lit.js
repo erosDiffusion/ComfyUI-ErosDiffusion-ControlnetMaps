@@ -722,6 +722,7 @@ export class ErosLitBrowser extends LitElement {
     _busyExport: { type: Boolean },
     _busyImport: { type: Boolean },
     _busyReset: { type: Boolean },
+    _resetWipeOtherDbs: { type: Boolean },
   };
 
   constructor() {
@@ -735,6 +736,8 @@ export class ErosLitBrowser extends LitElement {
     this._busyExport = false;
     this._busyImport = false;
     this._busyReset = false;
+    // Most reliable default: full reset clears all extension DBs.
+    this._resetWipeOtherDbs = true;
     this._patchedContainer = null;
     this._originalContainerStyle = null;
 
@@ -1236,10 +1239,13 @@ export class ErosLitBrowser extends LitElement {
               this._busyExport}
               @click=${async () => {
                 if (this._busyReset) return;
+
+                const msg = this._resetWipeOtherDbs
+                  ? "This will delete ALL cached maps under the current cache path, wipe the metadata database, and ALSO delete other extension DB files. This cannot be undone."
+                  : "This will delete ALL cached maps under the current cache path and wipe the metadata database. Other extension DBs will be preserved. This cannot be undone.";
                 const ok = await confirmDialog({
                   title: "Reset maps + metadata",
-                  message:
-                    "This will delete ALL cached maps under the current cache path and wipe the metadata database. This cannot be undone.",
+                  message: msg,
                   type: "delete",
                 });
                 if (!ok) return;
@@ -1253,7 +1259,9 @@ export class ErosLitBrowser extends LitElement {
                   life: 2500,
                 });
                 try {
-                  await this.cache.resetAll();
+                  await this.cache.resetAll({
+                    wipeOtherDbs: this._resetWipeOtherDbs,
+                  });
                   this.selectedFilename = null;
                   this.activeFilters = new Set();
                   this.tagSearchQuery = "";
@@ -1263,7 +1271,9 @@ export class ErosLitBrowser extends LitElement {
                   toast({
                     severity: "success",
                     summary: "Reset",
-                    detail: "Cache and metadata cleared",
+                    detail: this._resetWipeOtherDbs
+                      ? "Cache + metadata cleared (other DBs wiped)"
+                      : "Cache + metadata cleared",
                     life: 3000,
                   });
                 } catch (e) {
@@ -1281,6 +1291,20 @@ export class ErosLitBrowser extends LitElement {
             >
               Reset
             </button>
+
+            <label
+              style="display:flex;align-items:center;gap:6px;font-size:12px;opacity:0.9;user-select:none;"
+              title="Recommended. If enabled, Reset also wipes other extension .db files (in addition to metadata.db) for a fully clean state."
+            >
+              <input
+                type="checkbox"
+                .checked=${this._resetWipeOtherDbs}
+                @change=${(e) => {
+                  this._resetWipeOtherDbs = !!e.target.checked;
+                }}
+              />
+              full reset (wipe other DBs)
+            </label>
 
             <input
               id="eros-import-zip"

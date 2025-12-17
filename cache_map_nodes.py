@@ -1402,7 +1402,12 @@ async def import_zip(request):
 
 @PromptServer.instance.routes.post("/eros/cache/reset")
 async def reset_cache(request):
-    """Delete all cached maps under cache root and wipe DB(s)."""
+    """Delete all cached maps under cache root and wipe metadata.
+
+    JSON body:
+      - path: optional cache root
+      - wipe_other_dbs: bool (if true, also deletes other .db files in NODE_DIR)
+    """
     global metadata_manager
     try:
         data = await request.json()
@@ -1411,6 +1416,8 @@ async def reset_cache(request):
 
     try:
         raw_path = data.get("path", "") if isinstance(data, dict) else ""
+        # Default to full reset (most reliable) if caller doesn't specify.
+        wipe_other_dbs = bool(data.get("wipe_other_dbs", True)) if isinstance(data, dict) else True
         cache_root = _resolve_cache_root(raw_path)
         os.makedirs(cache_root, exist_ok=True)
 
@@ -1426,16 +1433,134 @@ async def reset_cache(request):
             except Exception:
                 pass
 
-        removed_dbs = 0
-        for f in os.listdir(NODE_DIR):
-            if f.lower().endswith(".db"):
-                dbp = os.path.join(NODE_DIR, f)
-                if os.path.isfile(dbp):
+        def _try_delete_db_file(db_path: str) -> bool:
+            ok = False
+            try:
+                if os.path.isfile(db_path):
+                    os.remove(db_path)
+                    ok = True
+            except Exception:
+                ok = False
+            # Also try to remove sqlite sidecar files
+            for suffix in ("-wal", "-shm", "-journal"):
+                try:
+                    side = db_path + suffix
+                    if os.path.isfile(side):
+                        os.remove(side)
+                except Exception:
+                    pass
+            return ok
+
+        def _clear_all_user_tables(db_path: str) -> bool:
+            """Fallback for when a DB file can't be deleted (Windows locks).
+
+            Deletes rows from all non-sqlite_* tables. Best-effort.
+            """
+            try:
+                conn = sqlite3.connect(db_path, timeout=2.0)
+            except Exception:
+                return False
+            try:
+                try:
+                    conn.execute("PRAGMA busy_timeout=2000")
+                except Exception:
+                    pass
+                try:
+                    conn.execute("PRAGMA foreign_keys=OFF")
+                except Exception:
+                    pass
+
+                try:
+                    tables = conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                    ).fetchall()
+                except Exception:
+                    tables = []
+
+                for (name,) in tables:
+                    if not name:
+                        continue
                     try:
-                        os.remove(dbp)
-                        removed_dbs += 1
+                        conn.execute(f"DELETE FROM {name}")
                     except Exception:
+                        # ignore per-table failures
                         pass
+
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+
+                try:
+                    conn.execute("VACUUM")
+                except Exception:
+                    pass
+                return True
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        # Always wipe metadata.db (robustly)
+        metadata_cleared = False
+        removed_dbs = 0
+        try:
+            if _try_delete_db_file(DB_PATH):
+                removed_dbs += 1
+                metadata_cleared = True
+            else:
+                # If Windows file locks prevent deletion, clear tables instead.
+                try:
+                    MetadataManager(DB_PATH)
+                except Exception:
+                    pass
+                try:
+                    conn = sqlite3.connect(DB_PATH)
+                    try:
+                        conn.execute("PRAGMA foreign_keys=OFF")
+                        # Clear known tables
+                        for tbl in ("image_tags", "tags", "favorites"):
+                            try:
+                                conn.execute(f"DELETE FROM {tbl}")
+                            except Exception:
+                                pass
+                        try:
+                            conn.commit()
+                        except Exception:
+                            pass
+                        try:
+                            conn.execute("VACUUM")
+                        except Exception:
+                            pass
+                        metadata_cleared = True
+                    finally:
+                        conn.close()
+                except Exception:
+                    metadata_cleared = False
+        except Exception:
+            metadata_cleared = False
+
+        removed_other_dbs = 0
+        if wipe_other_dbs:
+            try:
+                for f in os.listdir(NODE_DIR):
+                    if not f.lower().endswith(".db"):
+                        continue
+                    dbp = os.path.join(NODE_DIR, f)
+                    if os.path.abspath(dbp) == os.path.abspath(DB_PATH):
+                        continue
+                    if _try_delete_db_file(dbp):
+                        removed_other_dbs += 1
+                    else:
+                        # If locked, clear tables instead.
+                        try:
+                            if _clear_all_user_tables(dbp):
+                                removed_other_dbs += 1
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
         try:
             metadata_manager = MetadataManager(DB_PATH)
@@ -1445,13 +1570,26 @@ async def reset_cache(request):
         try:
             PromptServer.instance.send_sync(
                 "eros.cache.reset",
-                {"removed_files": removed_files, "removed_dbs": removed_dbs},
+                {
+                    "removed_files": removed_files,
+                    "removed_dbs": removed_dbs,
+                    "removed_other_dbs": removed_other_dbs,
+                    "metadata_cleared": metadata_cleared,
+                    "wipe_other_dbs": wipe_other_dbs,
+                },
             )
         except Exception:
             pass
 
         return web.json_response(
-            {"success": True, "removed_files": removed_files, "removed_dbs": removed_dbs}
+            {
+                "success": True,
+                "removed_files": removed_files,
+                "removed_dbs": removed_dbs,
+                "removed_other_dbs": removed_other_dbs,
+                "metadata_cleared": metadata_cleared,
+                "wipe_other_dbs": wipe_other_dbs,
+            }
         )
     except ValueError as ve:
         return web.json_response({"error": str(ve)}, status=400)
