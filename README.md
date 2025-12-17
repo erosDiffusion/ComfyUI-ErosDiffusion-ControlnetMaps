@@ -6,8 +6,8 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 
 > [!note]
-> this is an **Alpha** stage plugin and as such it will change often.
-> for this reason, as it might be unstable, it's not yet integrated with comfyUi manager.
+> This is an **Alpha** stage plugin and as such it will change often.
+> For this reason, as it might be unstable, it's not yet integrated with comfyUi manager.
 > If you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
 
@@ -37,9 +37,9 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 
 > [!important]
-> **this node does NOT generate the maps**:
-> - it helps you organize in a well known folder input/maps them and use them fast via browser.
-> - to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
+> **This node does NOT generate the maps**:
+> - It helps you organize in a well known folder input/maps them and use them fast via browser.
+> - To generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
 
 
 
@@ -56,7 +56,7 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 - There was a tiny initialization issue that would prevent you from opening the map browser if the file reference would be empty. this would be a common scenario for a new installation, and it is now solved.
 please go to your extension directory, and in a terminal from the extension folder where you cloned do `git fetch` and `git pull` to get the newer version
-- the good news is a fresh install of comfy requires no dependency install so it should work out of the box, the necessary sqlite db are created on the fly when missing. 
+- The good news is a fresh install of comfy requires no dependency install so it should work out of the box, the necessary sqlite db are created on the fly when missing. 
 
 
 <img width="1415" height="1051" alt="image" src="https://github.com/user-attachments/assets/6594ff91-23cd-454d-ab89-6284460ef585" />
@@ -102,15 +102,17 @@ You also find them in the ComfyUI templates sidebar
 
 ## Remarks
 
-- ctrl+click on existing tag adds to the current selected
-- tags are not duplicated, so you can freely re-insert them
-- comma separate tags in input and hit enter to insert or provide at generation time. **automatic tagging is not yet implemented. but you can link an llm when generating maps**
-- filter using tags
-- import is non destructive but additive (adds missing tags and images so feel free to import on top of what you have)
+- Modifier keys can be used for advanced usage of tags, they are described on top of the tag filtering
+- Tags are not duplicated, so you can freely re-insert them
+- To insert multiple tags while generating or after, comma separate them. the input field can be submitted pressing enter.
+- **automatic tagging is not yet implemented. but you can link an llm when generating maps**
+- You filter typing a tag name, that also filters the images otherwise click on the tag
+- Clicking a different tag uses the new cone, ctrl+click deselect, shift+click adds to the current selection
+- Import is non destructive but additive (adds missing tags and images so feel free to import on top of what you have)
 
 ## Known Issues
 
-- preview does not show in ControlnetMapBrowser node, when using nodes 2.0...if you want to see the preview in the node use the older gui, tested in comfyui v0.4. 
+- The preview does not show in ControlnetMapBrowser node  when using nodes 2.0...if you want to see the preview in the node use the older gui, tested in comfyui v0.4. 
 
 ## Troubleshooting
 
