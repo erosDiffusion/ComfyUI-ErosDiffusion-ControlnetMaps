@@ -1438,7 +1438,9 @@ export class ErosLitBrowser extends LitElement {
                 try {
                   if (tags) {
                     for (const t of tags) {
-                      if ((t ?? "").toString().trim().toLowerCase() === "favorite") {
+                      if (
+                        (t ?? "").toString().trim().toLowerCase() === "favorite"
+                      ) {
                         isFav = true;
                         break;
                       }
