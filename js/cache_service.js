@@ -202,7 +202,8 @@ export class CacheService {
   }
 
   async resetAll(opts = {}) {
-    const wipeOtherDbs = opts.wipeOtherDbs === undefined ? true : !!opts.wipeOtherDbs;
+    const wipeOtherDbs =
+      opts.wipeOtherDbs === undefined ? true : !!opts.wipeOtherDbs;
     const resp = await api.fetchApi("/eros/cache/reset", {
       method: "POST",
       body: JSON.stringify({
