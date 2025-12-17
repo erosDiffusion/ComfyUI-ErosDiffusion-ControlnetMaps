@@ -5,9 +5,13 @@ Save resources by skipping already done work!
 Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 
 
-note: this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
+**note**:
 
-**important!!! this node does NOT generate the maps**, it helps you organize and use them. to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
+this is an **Alpha** stage plugin, if you want to support development feel free to [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
+
+**important!!! this node does NOT generate the maps**:
+- it helps you organize in a well known folder input/maps them and use them fast via browser.
+- to generate the maps you will need other nodes ([Aio AUX preprocessor](https://github.com/Fannovel16/comfyui_controlnet_aux), [depth anything v2](https://github.com/kijai/ComfyUI-DepthAnythingV2) or  [depth anything v3](https://github.com/PozzettiAndrea/ComfyUI-DepthAnythingV3), canny (from comfy core) or whatever you like/need!)
 
 ## Installation
 
@@ -15,90 +19,67 @@ note: this is an **Alpha** stage plugin, if you want to support development feel
    1. `cd <your comfy ui custom_nodes directory>`   
    1. `git clone https://github.com/erosDiffusion/ComfyUI-ErosDiffusion-ControlnetMaps.git`  
 2. **Restart ComfyUI**: the nodes appear under the `ErosDiffusion` category or in the templates.
-3. Open Settings->Eros and **switch to "Lit" interface**
 
-## Usage
-5. add node to generate the maps (or use generatemaps workflow installing supporting nodes)
-6. drag and drop the map and make sure generate all is set to true (you can switch all flags on)
-7. then in your workflow ad the browser maps node, open the map browser with the button in the node, select a map that was generated, run your flow) the selected map will be used.
-8. you can filter and tag maps for easier finding.
-   
 
-**changelog 22.12.2025 - 17.22**
+## Usage (all workflows are accessible from comfyUi templates)
+
+3. **generateMaps**: open the baseWorkflowCanny from templates to generate your first map and cache it. pick a photo you licke and run. the map will now be available under "canny" filter and "original".
+4. **useMaps**: to select the map and use it choose the useCachedMaps workflow. open the Controlnet Map Browser sidebar and connect the node using the button "Open/Connect to map browser" in the map browser node. select a cached map. run the flow.
+5. **optional**, to **generate all maps** use the generateMaps workflow (requires you to install the map generator node).
+
+## Changelog
+
+**17.12.2025 - 17.22**
+
+- refactored code to use more features from comfy, sidebar, toasts, messaging
+- added import, export, reset, fixed some regressions, update newly generated maps on the fly
+
+**16.12.2025 - 17.22**
 
 - There was a tiny initialization issue that would prevent you from opening the map browser if the file reference would be empty. this would be a common scenario for a new installation, and it is now solved.
 please go to your extension directory, and in a terminal from the extension folder where you cloned do `git fetch` and `git pull` to get the newer version
 - the good news is a fresh install of comfy requires no dependency install so it should work out of the box, the necessary sqlite db are created on the fly when missing. 
 
 
+<img width="1415" height="1051" alt="image" src="https://github.com/user-attachments/assets/6594ff91-23cd-454d-ab89-6284460ef585" />
 
 
-![mapbrowser0](https://github.com/user-attachments/assets/55a1a07b-c0ae-45f1-bc40-0f2d03760ffb)
-
-### Video preview for usage
+### Video preview for usage (slightly older version)
 https://github.com/user-attachments/assets/f7881a43-2fc4-41ca-9655-8090d4b42c64
 
 ## Overview
 
 This package provides two ComfyUI nodes that simplify working with ControlNet maps by caching generated maps to disk and exposing a visual browser as well as tag them and store references in a local sqlite db:
 
-- `CacheMapNode` — smart cache layer that checks a disk cache before requesting expensive preprocessors and can save generated maps for reuse.
-- `CacheMapBrowserNode` — sidebar/browser integration to preview and load cached maps (returns the selected map).
+- `ControlnetMapCache` — smart cache layer that checks a disk cache before requesting expensive preprocessors and can save and tag generated maps for reuse.
+- `ControlnetMapBrowser` — sidebar/browser integration to preview and load cached maps (returns the selected map) ideally you would use this node to quickly select a cached map and use it in your workflow.
+- `Load Image ErosDiffusion` — Loads an image and returns the filename and other info (attempts to read the prompt) useful when generating maps.
 
- **note**: there are 2 frontend implementations, please use the LIT one , switch in settings:
- <img width="1087" height="1028" alt="image" src="https://github.com/user-attachments/assets/5b0024ad-8f54-4bdd-b2e9-7b28e82fb36b" />
 
 These nodes are designed to reduce repeated preprocessing work and help organize map assets by filename and type.
 Ideally later share and reuse high quality maps in a standard format.
+You can as well import and export the data set with the tags. to share it.
 
 ## Key Features
 
 - Cache lookup by filename and map type (supports multiple extensions).
-- `auto` mode detects existing map types and only runs connected preprocessors when needed (returns the first connected, top to bottom)
+- Browse and select images , once a node is connected the selection shows in the node and sets the filename to pass to other nodes (eg to apply the controlnet)
 - `generate_all` option to batch-save all connected preprocessors and the original image tags them and saves all maps to cache folder
-- Tagging: comma-separated `tags` input is persisted to a lightweight metadata DB for later retrieval and UI updates. you can connect an llm to the source image and have comma separated list of tags of your choice
+- Tagging: comma-separated `tags` input is persisted to a lightweight metadata DB for later retrieval and UI updates. You can connect an llm to the source image and have comma separated list of tags of your choice.
 - Browse and search the nodes by tag or type and easily select the image for reuse.
+- `auto` mode detects existing map types and only runs connected preprocessors when needed (returns the first connected, top to bottom) - auto mode is currently bugged.
+- Import and Export, db reset
+- Easily add remove and filter with tagging
+- Start and filter by favorite
+- Resize the sidebar
+- Responsive image column and sizing
 
-## Nodes
+## Example Workflows 
+There are three workflows preset in the workflow examples folder
+You also find them in the ComfyUI templates sidebar
 
-**CacheMapNode**
+  <img width="2005" height="1298" alt="image" src="https://github.com/user-attachments/assets/0431e3fa-792e-4346-a592-6092164f468d" />
 
-- Category: `ErosDiffusion`
-- Returns: `IMAGE` (`map`)
-- Useful inputs (see node UI for full list): `cache_path`, `filename`, `map_type` (auto | depth | canny | ... | browser), `save_if_new`, `force_generation`, `generate_all`, `tags`, `source_<map_type>` image inputs, `source_original`.
-- Behavior summary:
-  - If `map_type` is `browser` the node simply passes through the `source_browser` image.
-  - In `auto` mode it searches cache subfolders for existing maps and only requests the necessary preprocessor inputs on cache miss.
-  - `save_if_new` saves generated maps to `<cache_path>/<type>/<basename>.png`.
-  - `generate_all` forces evaluation of all connected preprocessor inputs and saves them.
-  - Tags are parsed, deduplicated, and stored via the included metadata manager.
-
-**CacheMapBrowserNode**
-
-- Category: `ErosDiffusion`
-- Returns: `IMAGE, MASK` (`image, mask`)
-- Opens a map browser in the ComfyUI sidebar (button on the node). Select a file and the node loads the image and corresponding mask (if any).
-
-## Default Map Types
-
-Default map types are configured in `eros_config.json`. The shipped defaults are:
-
-```
-depth, canny, openpose, lineart, scribble, softedge, normal, seg, shuffle, mediapipe_face, custom
-```
-
-You can customize that list in `eros_config.json` (node will read this file on load). (this feature should work but not well tested)
-custom is a passthrough, you can pass whatever you want. original is always meatn to be there, as you need it for overlays. 
-
-
-
-## Typical Workflows (two workflows preset in the workflow examples folder)
-
-- Quick reuse: Connect a preprocessor node to `CacheMapNode`'s `source_<type>` and set `filename` to a stable identifier; future runs will load the cached map instead of re-running the preprocessor.
-- Batch export: Enable `generate_all` to save all connected preprocessor outputs and the original image to disk.
-- Browse & inject: Use the `CacheMapBrowserNode` to visually pick maps and feed them into downstream nodes.
-
-  <img width="1424" height="1125" alt="image" src="https://github.com/user-attachments/assets/774d7696-80ee-4136-b094-a540d82a7cab" />
 
 
 ## Remarks
@@ -108,7 +89,7 @@ custom is a passthrough, you can pass whatever you want. original is always meat
 - comma separate tags in input and hit enter to insert or provide at generation time
 - filter using tags
 - type selection works but lable does not highlight
-- there are two implementations, vanilla and lit, lit is the target you can switch in the preferences (but vanilla might be broken now)
+- import is non destructive but additive (adds missing tags and images)
 
 ## Paths & Defaults
 
@@ -125,18 +106,15 @@ Provide a comma-separated `tags` string to `CacheMapNode` and tags will be parse
 - For `auto` mode misses, ensure the corresponding `source_<type>` input is connected so the preprocessor can run and generate the map.
 - If browser doesn't show files, confirm the UI has access to the configured `cache_path` and any `extra_path` you provided.
 
-## Files of interest
 
-- `cache_map_nodes.py` — node implementations (CacheMapNode, CacheMapBrowserNode)
-- `eros_config.json` — map type configuration
-- `metadata_manager.py` — tagging/DB helper
-- `requirements.md` — dependency notes
 
 ## Contributing
 
 PRs welcome. Keep changes focused and add tests/examples where possible. Test it and tell me what's wrong.
 during the vanilla to lit porting something got off, so there are some regressions.
 
+## Support
+If you feel like rich:  [donate](https://donate.stripe.com/3cI7sDgZg4rr2Ln0HfcV202)
 
 
 
