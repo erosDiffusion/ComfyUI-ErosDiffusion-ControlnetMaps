@@ -35,6 +35,11 @@ Generate, tag, cache, search and use ControlNet maps inside ComfyUI.
 4. **useMaps**: to select the map and use it choose the useCachedMaps workflow. open the Controlnet Map Browser sidebar and connect the node using the button "Open/Connect to map browser" in the map browser node. select a cached map. run the flow.
 5. **optional**, to **generate all maps** use the generateMaps workflow (requires you to install the map generator node).
 
+but wait... do you have to generate maps if you already have ?
+7. **no!!!** **If you have some just copy them in the appropriate folder** (input/maps/<type>) and refresh (images that don't have an equivalent name in another folder won't show the original overlay and when switching type won't match anything), no need to generate them!
+<img width="625" height="513" alt="image" src="https://github.com/user-attachments/assets/fe2f43c0-a123-446a-b82b-1c3640da4333" />
+
+
 
 > [!important]
 > **This node does NOT generate the maps**:
